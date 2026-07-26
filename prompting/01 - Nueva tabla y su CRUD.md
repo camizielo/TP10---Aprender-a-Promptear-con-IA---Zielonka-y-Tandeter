@@ -41,7 +41,7 @@ CREATE TABLE calificaciones (
     id SERIAL PRIMARY KEY,
     id_alumno INT NOT NULL REFERENCES alumnos(id),
     id_materia INT NOT NULL REFERENCES materias(id),
-    nota INT NOT NULL,
+    nota INT NOT NULL,  
     fecha DATE NOT NULL DEFAULT CURRENT_DATE,
     UNIQUE(id_alumno, id_materia)
 );

@@ -1,0 +1,60 @@
+2026-07-25T21:59:23.023Z: error - (ENOTFOUND) tenant/user postgres.eozcrunsuompyeapymze not found
+Stack Trace:
+error: (ENOTFOUND) tenant/user postgres.eozcrunsuompyeapymze not found
+    at c:\Users\sided\OneDrive\Documentos\Dai 2026\Tp 10\arquitectura-sample-node-pg-IA-public\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async DbPg.queryAll (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/db-pg.js:24:19)
+    at async AlumnosRepository.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/alumnos-repository.js:12:16)
+    at async AlumnosService.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/services/alumnos-service.js:30:29)
+    at async file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/controllers/alumnos-controller.js:39:29
+
+2026-07-25T22:02:06.091Z: error - (ENOTFOUND) tenant/user postgres.eozcrunsuompyeapymze not found
+Stack Trace:
+error: (ENOTFOUND) tenant/user postgres.eozcrunsuompyeapymze not found
+    at c:\Users\sided\OneDrive\Documentos\Dai 2026\Tp 10\arquitectura-sample-node-pg-IA-public\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async DbPg.queryAll (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/db-pg.js:24:19)
+    at async AlumnosRepository.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/alumnos-repository.js:12:16)
+    at async AlumnosService.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/services/alumnos-service.js:30:29)
+    at async file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/controllers/alumnos-controller.js:39:29
+
+2026-07-25T22:03:08.202Z: error - (ENOTFOUND) tenant/user postgres.eozcrunsuompyeapymze not found
+Stack Trace:
+error: (ENOTFOUND) tenant/user postgres.eozcrunsuompyeapymze not found
+    at c:\Users\sided\OneDrive\Documentos\Dai 2026\Tp 10\arquitectura-sample-node-pg-IA-public\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async DbPg.queryAll (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/db-pg.js:24:19)
+    at async AlumnosRepository.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/alumnos-repository.js:12:16)
+    at async AlumnosService.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/services/alumnos-service.js:30:29)
+    at async file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/controllers/alumnos-controller.js:39:29
+
+2026-07-25T22:10:19.571Z: error - password authentication failed for user "postgres"
+Stack Trace:
+error: password authentication failed for user "postgres"
+    at c:\Users\sided\OneDrive\Documentos\Dai 2026\Tp 10\arquitectura-sample-node-pg-IA-public\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async DbPg.queryAll (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/db-pg.js:24:19)
+    at async AlumnosRepository.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/alumnos-repository.js:12:16)
+    at async AlumnosService.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/services/alumnos-service.js:30:29)
+    at async file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/controllers/alumnos-controller.js:39:29
+
+2026-07-25T22:10:20.702Z: error - password authentication failed for user "postgres"
+Stack Trace:
+error: password authentication failed for user "postgres"
+    at c:\Users\sided\OneDrive\Documentos\Dai 2026\Tp 10\arquitectura-sample-node-pg-IA-public\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async DbPg.queryAll (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/db-pg.js:24:19)
+    at async AlumnosRepository.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/alumnos-repository.js:12:16)
+    at async AlumnosService.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/services/alumnos-service.js:30:29)
+    at async file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/controllers/alumnos-controller.js:39:29
+
+2026-07-25T22:10:21.625Z: error - password authentication failed for user "postgres"
+Stack Trace:
+error: password authentication failed for user "postgres"
+    at c:\Users\sided\OneDrive\Documentos\Dai 2026\Tp 10\arquitectura-sample-node-pg-IA-public\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async DbPg.queryAll (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/db-pg.js:24:19)
+    at async AlumnosRepository.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/repositories/alumnos-repository.js:12:16)
+    at async AlumnosService.getAllAsync (file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/services/alumnos-service.js:30:29)
+    at async file:///c:/Users/sided/OneDrive/Documentos/Dai%202026/Tp%2010/arquitectura-sample-node-pg-IA-public/src/controllers/alumnos-controller.js:39:29
+
