@@ -1,0 +1,199 @@
+# 📓 Bitácora de Prompts — Ejercicio N° 01
+
+> Copiá este archivo por cada ejercicio que entregues. Nombralo, por ejemplo, `entregas/01-bitacora.md`.
+> Esta bitácora **es parte de la nota**. Un ejercicio sin bitácora no se corrige.
+
+---
+
+## Datos
+
+- **Alumno/a:** Camila Zielonka y Victoria Tandeter
+- **Ejercicio:** N° 01 — Nueva tabla y su CRUD (`materias`)
+- **Fecha:** 16/07
+- **Modelo de IA usado:** Claude
+
+---
+
+## 1. 🎯 Qué me pidieron
+
+Agregar una entidad nueva, `materias`, al proyecto de alumnos/cursos, replicando exactamente la misma arquitectura en capas (repository → service → controller) que ya existe para `cursos`. Había que crear las tablas en Postgres (`materias` y `calificaciones`), generar los 3 archivos con ayuda de una IA copiando el patrón existente, enchufar el controller en `server.js`, y probar los 5 endpoints CRUD en Postman.
+
+---
+
+## 2. 💬 Mis prompts (en orden)
+
+### Prompt #1 — Repository
+
+**Lo que escribí:**
+```
+Actuá como un desarrollador backend senior en Node.js y Express.
+
+CONTEXTO:
+Tengo una API REST con arquitectura en capas (controller → service → repository).
+Uso la librería `pg` (sin ORM), con una clase `DbPg` que centraliza el acceso a
+Postgres mediante un Pool, y expone los métodos this.db.queryAll(sql, values),
+this.db.queryOne(sql, values), this.db.queryReturnId(sql, values) y
+this.db.queryRowCount(sql, values).
+
+Te paso mi cursos-repository.js como referencia exacta de estilo: (Pegué el codigo como para referencia)
+
+TAREA: Generá un materias-repository.js para una tabla materias (id SERIAL,
+nombre VARCHAR(75)), con los mismos 5 métodos (getAllAsync, getByIdAsync,
+createAsync, updateAsync, deleteByIdAsync), copiando el mismo patrón de clase.
+
+RESTRICCIONES: sin dependencias nuevas, no uses ORM, Mantené el nombre de la clase en PascalCase (MateriasRepository) y el archivo en
+  kebab-case (materias-repository.js). Mantener console.log de debug, usar ?? (no ||), queries con $1/$2.
+
+ITERACIÓN: Mostrame solo el repository por ahora.
+```
+
+**Auto-chequeo de las 5 partes EFSI** (marcá lo que incluiste):
+- [x] Rol
+- [x] Contexto (¿pegaste código del proyecto?)
+- [x] Tarea
+- [x] Restricciones
+- [x] Iteración
+
+**Qué me devolvió (resumen):**
+Un `materias-repository.js` calcado de `cursos-repository.js`, cambiando `cursos` por `materias` en el nombre de la clase, los `console.log`. Mismos 5 métodos, mismo uso de `this.db`, mismo `??`.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Me sirvió tal cual. Lo revisé método por método contra `cursos-repository.js` (placeholders `$1`, uso de `??`, delegación en `this.db`) y no hizo falta corregir nada.
+
+---
+
+### Prompt #2 — Service
+
+**Lo que escribí:**
+```
+Perfecto. Ahora seguimos con la siguiente capa: el service.
+
+CONTEXTO: Te paso mi cursos-service.js como referencia exacta de estilo: (el texto pegado de vuelta, de cursos-services.js)
+
+TAREA: Generá un materias-service.js que use el MateriasRepository que ya
+generaste antes, con los mismos 5 métodos, siguiendo el mismo patrón: cada
+método del service llama al método equivalente del repository y devuelve el
+resultado tal cual.
+
+RESTRICCIONES: - No agregues dependencias nuevas. Nombre de la clase: MateriasService. Importá MateriasRepository desde '../repositories/materias-repository.js'. Mantené los console.log de debug igual que en el original.
+Mostrame solo el service por ahora.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+No fue por un error del prompt anterior — es la siguiente capa de la cadena. Seguí la recomendación de la consigna de generar de a una capa por vez, en la misma conversación, para que la IA mantuviera el contexto del repository ya generado.
+
+---
+
+### Prompt #3 — Controller
+
+**Lo que escribí:**
+```
+Perfecto. Ahora la última capa: el controller.
+
+CONTEXTO: Te paso mi cursos-controller.js como referencia exacta de estilo: (codigo de cursos-controller)
+
+TAREA: Generá un materias-controller.js que use el MateriasService, con los
+mismos 5 endpoints (GET all, GET by id, POST, PUT, DELETE), mismos status
+codes, mismo manejo de errores con try/catch.
+
+RESTRICCIONES: sin dependencias nuevas, importar MateriasService desde
+'./../services/materias-service.js', variable currentService, mantener
+console.log y mensajes de error.
+
+Mostrame el resultado completo.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+Última capa de la cadena. Mismo motivo que el prompt #2: iterar capa por capa dentro de la misma conversación para mantener consistencia de estilo.
+
+*(Los tres prompts se resolvieron correctamente en un solo intento cada uno — no hizo falta un cuarto prompt de corrección.)*
+
+---
+
+## 3. 🔧 Qué hizo la IA y qué hice yo
+
+LO QUE GENERÓ LA IA (las 3 capas, sin modificaciones):
+
+- materias-repository.js — los 5 métodos (getAllAsync, getByIdAsync, createAsync,
+  updateAsync, deleteByIdAsync), copia fiel del patrón de cursos-repository.js.
+- materias-service.js — los 5 métodos equivalentes, copia fiel de cursos-service.js.
+- materias-controller.js — los 5 endpoints, copia fiel de cursos-controller.js.
+
+En los tres casos coincidían exactamente con el patrón original, así que no
+encontramos desvíos al revisarlos y se guardaron tal cual.
+
+
+LO QUE HICIMOS NOSOTRAS A MANO:
+
+- server.js: agregamos el import de MateriasController y la línea
+  app.use("/api/materias", MateriasController). La IA no toca este archivo,
+  hay que enchufar el controller manualmente.
+- Script SQL de materias y calificaciones: ya venía dado en el enunciado,
+  lo ejecutamos en pgAdmin4.
+- Requests de Postman (GET, GET/:id, POST, PUT, DELETE): los armamos nosotras.
+  Corregimos dos errores propios en el camino: un POST apuntado por error a
+  /materias/1 en vez de /materias, y un PUT con el Body vacío (raw/JSON sin
+  texto adentro).
+
+---
+
+## 4. 🐛 Errores o cosas mal que detecté en la respuesta de la IA
+
+En el código generado por la IA, en sí, no encontré errores: las tres capas replicaron el patrón de `cursos` sin desviarse (mismo uso de `this.db`, mismos placeholders `$1`, mismo operador `??`, mismos status codes en el controller). Esto tiene sentido porque el prompt le dio contexto completo (el archivo real de referencia) y restricciones claras — es justamente el escenario donde menos margen de error tiene la IA.
+
+Donde sí aparecieron errores fue en mi propio uso de Postman, no en el código:
+- Armé el POST apuntando a `/api/materias/1` en vez de `/api/materias` (el endpoint de creación no lleva id en la URL, porque el id lo asigna la base).
+- En el PUT, dejé el Body configurado en "raw" y "JSON" pero **vacío** — el error `Cannot read properties of undefined (reading 'id')` no era un bug del controller sino la consecuencia esperada de mandar un `req.body` vacío contra un código que asume que existe.
+- Antes de llegar a probar `materias`, tuve un error de conexión a la base no relacionado con la IA: el `.env` tenía `DB_TARGET="supabase"` cuando en realidad uso Postgres local, y después la contraseña de Postgres no coincidía con la del `.env` — hubo que resetearla con `ALTER USER postgres WITH PASSWORD '...'` en pgAdmin4.
+
+---
+
+## 5. ✅ Verificación
+
+```
+[x] El repository delega el acceso a datos en la clase DbPg (this.db.queryAll/
+    queryOne/...), igual que alumnos-repository.js. No toca el Pool directamente.
+    Evidencia: revisión línea por línea contra cursos-repository.js.
+
+[x] Las queries usan placeholders $1, $2... (no concatenación de strings).
+    Evidencia: revisión del código de materias-repository.js.
+
+[x] El controller devuelve los status codes correctos: 200, 201 en POST,
+    404 cuando no existe, 400 en error de input.
+    Evidencia: capturas de Postman — POST devolvió 201, GET devolvió 200.
+
+[x] El update valida que el id de la URL coincida con el del body.
+    Evidencia: código copiado igual que en alumnos-controller.js (comparación
+    entity.id vs parseInt(id)).
+
+[x] El controller está registrado en server.js y los 5 endpoints responden
+    en Postman.
+    Evidencia: capturas de Postman de GET all, GET by id, POST, PUT y DELETE
+    sobre http://localhost:3000/api/materias.
+
+[x] No aparecieron dependencias nuevas en package.json.
+    Evidencia: package.json sin cambios respecto al original (cors, dotenv,
+    express, http-status-codes, pg).
+```
+
+---
+
+## 6. ✍️ Reflexión (300–600 palabras)
+
+Para este ejercicio usamos Claude para generar las tres capas de la entidad `materias` (repository, service, controller), siguiendo el patrón que ya existía para `cursos`. En vez de escribir el código nosotras desde cero, o pedirle a la IA "hacé el CRUD de materias" a secas, armamos un prompt por cada capa, pegando el archivo real correspondiente de `cursos` como referencia y explicando restricciones concretas: no usar ORM, mantener el operador `??`, usar placeholders `$1` en las queries, no agregar dependencias. Fuimos capa por capa (primero repository, después service, después controller) dentro de la misma conversación, para que la IA mantuviera el contexto de lo ya generado y no tuviéramos que repetir todo cada vez.
+
+La decisión más importante que tomamos fue justamente pedir de a una capa, revisando cada una antes de pasar a la siguiente, en vez de pedir las tres juntas en un solo prompt. Esto nos permitió comparar método por método el código nuevo contra el original de `cursos`, y confirmar cosas puntuales como que se mantuviera el uso de `??` en vez de `||`, que rompería con valores como `0` o `false` en otros campos y que las queries siguieran usando placeholders en vez de concatenar strings.
+
+En este caso particular, no tuvimos que corregir nada del código que generó la IA — las tres capas fueron una réplica fiel del patrón de `cursos`, sin atajos ni desvíos de estilo. Creemos que esto se debe directamente a la calidad del contexto que le dimos: al pegar el archivo real completo y pedir explícitamente que "copie el mismo patrón", la IA tuvo muy poco margen para inventar su propio estilo (lo que sí hubiera pasado, seguramente, si solo pedíamos "hacé el CRUD de materias" sin más contexto).
+
+Donde sí tuvimos que iterar y corregir fue en el inicio real del proyecto, que no dependía de la IA sino de nuestra configuración: primero, el `.env` tenía `DB_TARGET` apuntando a Supabase cuando en realidad usamos Postgres local, lo que generaba un error de conexión (`ENOTFOUND`). Después de corregir eso, apareció un segundo error de contraseña incorrecta, que resolvimos reseteando la contraseña del usuario `postgres` directamente desde pgAdmin4 con `ALTER USER`. Y ya en la etapa de probar los endpoints en Postman, cometimos dos errores propios: armamos el request de POST apuntando a `/api/materias/1` (cuando el endpoint de creación no lleva id, porque lo asigna la base de datos), y dejamos el Body de un PUT vacío a pesar de tener seleccionado "raw" y "JSON", lo que generó un error de "Cannot read properties of undefined" al intentar leer `entity.id` de un body inexistente.
+
+Lo que más aprendimos de este ejercicio no fue tanto sobre el código en sí (que replicó un patrón conocido sin sorpresas), sino sobre cómo diagnosticar errores leyendo la consola del servidor y el mensaje de error real, en vez de quedarnos solo con el "Error interno" genérico que devuelve Postman. Entendimos también, de manera más concreta, el recorrido completo de un pedido HTTP a través de las capas (controller → service → repository → base de datos), y por qué separar responsabilidades en capas hace más fácil ubicar en qué punto exacto de la cadena está fallando algo.
+
+---
+
+## 7. 🔗 Adjuntos
+
+- [ ] Link/PDF de la conversación completa con la IA
+- [ ] Commit(s) en GitHub: `____________`
+- [ ] Capturas / evidencias de verificación
