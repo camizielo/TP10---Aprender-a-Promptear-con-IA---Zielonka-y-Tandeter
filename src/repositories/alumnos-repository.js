@@ -1,21 +1,10 @@
-import Db from './db-pg.js';
 
-export default class AlumnosRepository {
+import BaseRepository from './base-repository.js';
+
+export default class AlumnosRepository extends BaseRepository {
     constructor() {
+        super('alumnos');
         console.log('Estoy en: AlumnosRepository-new.constructor()');
-        this.db = new Db();
-    }
-
-    getAllAsync = async () => {
-        console.log(`AlumnosRepository-new.getAllAsync()`);
-        const sql = `SELECT * FROM alumnos`;
-        return await this.db.queryAll(sql);
-    }
-
-    getByIdAsync = async (id) => {
-        console.log(`AlumnosRepository-new.getByIdAsync(${id})`);
-        const sql = `SELECT * FROM alumnos WHERE id=$1`;
-        return await this.db.queryOne(sql, [id]);
     }
 
     createAsync = async (entity) => {
@@ -26,13 +15,7 @@ export default class AlumnosRepository {
                             id_curso            ,
                             fecha_nacimiento    ,
                             hace_deportes
-                        ) VALUES (
-                            $1,
-                            $2,
-                            $3,
-                            $4,
-                            $5
-                        ) RETURNING id`;
+                        ) VALUES ($1, $2, $3, $4, $5) RETURNING id`;
         const values = [
             entity?.nombre           ?? '',
             entity?.apellido         ?? '',
@@ -46,7 +29,6 @@ export default class AlumnosRepository {
     updateAsync = async (entity) => {
         console.log(`AlumnosRepository-new.updateAsync(${JSON.stringify(entity)})`);
         let id = entity.id;
-
         const previousEntity = await this.getByIdAsync(id);
         if (previousEntity == null) return 0;
 
@@ -66,11 +48,5 @@ export default class AlumnosRepository {
             entity?.hace_deportes    ?? previousEntity?.hace_deportes
         ];
         return await this.db.queryRowCount(sql, values);
-    }
-
-    deleteByIdAsync = async (id) => {
-        console.log(`AlumnosRepository-new.deleteByIdAsync(${id})`);
-        const sql = `DELETE FROM alumnos WHERE id=$1`;
-        return await this.db.queryRowCount(sql, [id]);
     }
 }

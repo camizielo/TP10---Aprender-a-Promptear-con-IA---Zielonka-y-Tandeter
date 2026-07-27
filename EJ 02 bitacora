@@ -1,0 +1,178 @@
+# 📓 Bitácora de Prompts — Ejercicio N° 02
+
+> Copiá este archivo por cada ejercicio que entregues. Nombralo, por ejemplo, `entregas/02-bitacora.md`.
+> Esta bitácora **es parte de la nota**. Un ejercicio sin bitácora no se corrige.
+
+---
+
+## Datos
+
+- **Alumno/a:** Camila Zielonka y Victoria Tandeter
+- **Ejercicio:** N° 02 — Refactorización del CRUD repetido
+- **Fecha:** __16/07_
+- **Modelo de IA usado:** Claude
+
+---
+
+## 1. 🎯 Qué me pidieron
+
+Eliminar la duplicación de código entre los repositories de alumnos, cursos y materias, ya que los tres tenían métodos casi idénticos (getAll, getById, deleteById), cambiando solo el nombre de la tabla. Había que elegir una estrategia de refactorización (herencia, composición u otra), justificarla, e implementarla sin cambiar el comportamiento externo de la API.
+
+---
+
+## 2. 💬 Mis prompts (en orden)
+
+### Prompt #1 — Diagnóstico
+
+**Lo que escribí:**
+Actuá como un desarrollador backend senior en Node.js, especializado en
+refactorización y principios DRY. Contexto: API REST en capas con pg sin
+ORM, 3 entidades con repositories casi idénticos. Pegué alumnos-repository.js
+y cursos-repository.js completos. Tarea: identificar la duplicación entre
+ellos y proponer 2 o 3 estrategias de refactorización con pros y contras,
+sin escribir código todavía. Restricciones: no proponer ORM, la duplicación
+a resolver es el armado del SQL y nombre de tabla/columnas (no el Pool, que
+ya está resuelto en DbPg). Iteración: yo elijo una estrategia después de
+leer las opciones, y ahí pido la implementación.
+
+**Auto-chequeo de las 5 partes EFSI** (marcá lo que incluiste):
+- [x] Rol
+- [x] Contexto (¿pegaste código del proyecto?)
+- [x] Tarea
+- [x] Restricciones
+- [x] Iteración
+
+**Qué me devolvió (resumen):**
+Identificó que la duplicación real está en getAllAsync, getByIdAsync y
+deleteByIdAsync (idénticos salvo el nombre de tabla), y que createAsync/
+updateAsync no conviene unificarlos porque cada entidad tiene columnas muy
+distintas. Propuso 3 estrategias: A) herencia con una clase BaseRepository,
+B) composición con un objeto genérico interno, C) factory function que arma
+un objeto con los métodos comunes. Explicó pros/contras de cada una y
+recomendó la A para este proyecto, justificando que no vamos a necesitar
+super() en ningún método porque create/update son siempre distintos.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió tal cual. El análisis y la recomendación coincidían con lo que
+nosotras mismas hubiéramos elegido, así que no hizo falta repreguntar nada
+antes de avanzar a la implementación.
+
+### Prompt #2 — Ejecución (Estrategia A: herencia)
+
+**Lo que escribí:**
+
+Vamos con la Estrategia A (herencia con BaseRepository). Implementá una
+clase base-repository.js con getAllAsync, getByIdAsync y deleteByIdAsync
+parametrizados por this.tabla (recibida en el constructor). Después
+refactorizá alumnos, cursos y materias-repository.js para que hagan
+extends BaseRepository, llamen a super('tabla'), y se queden solo con
+createAsync y updateAsync. Restricciones: la API pública no puede cambiar
+(mismos status codes y JSON), mantener los console.log, seguir con arrow
+functions (no métodos de prototipo, porque ningún método común necesita
+super), no ORM, no tocar service.js ni controller.js. Iteración: mostrame
+primero solo base-repository.js, después los 3 repositories.
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+No fue por un error — es el segundo paso lógico de la iteración que
+planeamos desde el prompt #1 (primero diagnóstico, después ejecución).
+
+*(Los dos prompts se resolvieron correctamente en un solo intento cada uno — no hizo falta un tercer prompt de corrección.)*
+
+---
+
+## 3. 🔧 Qué hizo la IA y qué hice yo
+
+Lo que generó la IA (sin modificaciones nuestras):
+
+- base-repository.js completo, con getAllAsync, getByIdAsync y
+  deleteByIdAsync parametrizados por this.tabla, y la aclaración de por qué
+  interpolar this.tabla en el SQL es seguro (es una constante nuestra, no
+  input del usuario).
+- alumnos-repository.js, cursos-repository.js y materias-repository.js
+  refactorizados: agregó extends BaseRepository y super('tabla'), sacó los
+  3 métodos ahora heredados, y dejó createAsync/updateAsync intactos tal
+  cual estaban antes del refactor.
+
+Lo que hicimos nosotras:
+
+- Elegir la Estrategia A (herencia) entre las 3 que propuso la IA en el
+  diagnóstico, justificando por qué las otras dos no convenían para este
+  proyecto (composición agrega indirección sin necesidad; factory function
+  rompe la consistencia de estilo basado en class).
+- Verificar en Postman que los 5 endpoints de alumnos, cursos y materias
+  siguieran devolviendo el mismo status code y el mismo JSON que antes del
+  refactor.
+- Agregar los comentarios // [IA] y // [YO] en los 4 archivos (base-repository
+  y los 3 repositories modificados).
+
+---
+
+## 4. 🐛 Errores o cosas mal que detecté en la respuesta de la IA
+
+No encontramos errores de funcionamiento en el código generado: el
+comportamiento de los 5 endpoints se mantuvo idéntico al probarlo en
+Postman antes y después del refactor. Sí vale la pena marcar dos puntos que
+no son errores pero sí decisiones a vigilar:
+
+- La IA fue cuidadosa en aclarar por su cuenta, sin que lo pidiéramos
+  explícitamente, la diferencia entre interpolar this.tabla (seguro, porque
+  es una constante nuestra) e interpolar un id o dato de usuario (inseguro).
+  Nos pareció positivo que lo mencionara sin que se lo pidiéramos, pero
+  igual lo verificamos nosotras mismas contra el código real antes de
+  darlo por válido.
+- En AlumnosRepository.updateAsync, el método sigue llamando a
+  this.getByIdAsync(id), que ahora vive en la clase base y no en la propia
+  clase. Confirmamos que esto funciona correctamente porque this resuelve
+  métodos heredados sin necesidad de super, pero es un detalle que podría
+  pasar desapercibido si no se revisa con atención.
+
+---
+
+## 5. ✅ Verificación
+
+[x] Los 5 endpoints de alumnos, cursos y materias siguen respondiendo igual
+que antes (mismos status codes, mismo JSON).
+Evidencia: se volvieron a correr las mismas requests de Postman del
+ejercicio 01 después del refactor, comparando las respuestas.
+
+[x] La lógica común está en un solo lugar (base-repository.js). Si se
+arregla un bug en getAllAsync, se arregla para las 3 entidades a la vez.
+Evidencia: revisión del código — los 3 repositories ya no tienen su
+propia copia de esos 3 métodos.
+
+[x] Lo específico de cada entidad (columnas del INSERT/UPDATE) sigue siendo
+claro y fácil de cambiar.
+Evidencia: createAsync/updateAsync de cada repository quedaron intactos,
+sin ninguna abstracción forzada sobre ellos.
+
+[x] La regla de negocio de alumnos (traer el previo para el update parcial
+con this.getByIdAsync) no se perdió en el refactor.
+Evidencia: revisión de AlumnosRepository.updateAsync — sigue llamando
+a this.getByIdAsync(id) y funcionando igual, ahora vía herencia.
+
+[x] No se agregó un ORM ni dependencias nuevas.
+Evidencia: package.json sin cambios.
+
+
+---
+
+## 6. ✍️ Reflexión (300–600 palabras)
+
+Para este ejercicio, en vez de pedirle directamente a la IA que "refactorice el código", seguimos la estructura de dos prompts que sugiere la consigna: primero un diagnóstico, después la implementación. Nos pareció clave no saltar directo a la ejecución, porque el ejercicio explícitamente advierte que la IA puede "irse de mano" con una sobre-refactorización que después no se entiende, y queríamos elegir nosotras la estrategia en vez de aceptar la primera que apareciera.
+
+En el diagnóstico, la IA nos devolvió tres estrategias posibles: herencia, composición, y una factory function. Lo que más nos ayudó a decidir fue que no solo listó pros y contras genéricos, sino que los conectó con nuestro proyecto puntual: por ejemplo, señaló que la desventaja típica de la herencia (no poder extender fácil un método común con super) no nos afecta, porque en nuestro caso createAsync y updateAsync son completamente distintos entre entidades, nunca una extensión de un método compartido. Esa razón concreta fue la que nos convenció de elegir la Estrategia A por sobre composición o factory function, más que "porque suena más simple".
+
+La decisión más importante que tomamos fue justamente esa: no dejar que la IA eligiera por nosotras. Pedimos explícitamente que no nos diera código en el primer prompt, para poder razonar la elección antes de comprometernos con una implementación. Esto nos obligó a entender de verdad la diferencia entre "es un" (herencia) y "tiene un" (composición), en vez de solo copiar y pegar lo primero que apareciera.
+
+En la implementación, revisamos con cuidado dos cosas puntuales: primero, que this.tabla —usada para armar el SQL dinámicamente, tipo SELECT * FROM ${this.tabla}— fuera siempre una constante que nosotras definimos en cada super('alumnos'), super('cursos'), etc., y nunca un valor que viniera del usuario, porque interpolar directamente un dato de request sí sería una vulnerabilidad de SQL injection. Segundo, confirmamos que AlumnosRepository.updateAsync, que internamente llama a this.getByIdAsync(id), siguiera funcionando después de que ese método pasara a vivir en la clase base: efectivamente funciona, porque this resuelve los métodos heredados sin necesitar super, algo que entendimos mejor gracias a la explicación que trae el enunciado del ejercicio sobre arrow functions como campos de clase versus métodos de prototipo.
+
+No tuvimos que corregir código generado por la IA en este ejercicio — la implementación fue correcta en el primer intento en los dos prompts. Pero sí hicimos un trabajo activo de verificación: no dimos por sentado que "funciona porque la IA lo dijo", sino que volvimos a correr en Postman los mismos 5 endpoints de las 3 entidades y confirmamos que las respuestas fueran idénticas a las de antes del refactor. Aprendimos que en un ejercicio de refactorización, la verificación más importante no es leer el código nuevo, sino comparar el comportamiento externo antes y después — si algo cambia ahí, no importa cuán prolijo se vea el código, el refactor está mal.
+
+
+---
+
+## 7. 🔗 Adjuntos
+
+- [ ] Link/PDF de la conversación completa con la IA
+- [ ] Commit(s) en GitHub: `____________`
+- [ ] Capturas / evidencias de verificación
