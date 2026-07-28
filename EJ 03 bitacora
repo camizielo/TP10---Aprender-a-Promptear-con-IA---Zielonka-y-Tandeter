@@ -1,0 +1,206 @@
+# 📓 Bitácora de Prompts — Ejercicio N° 03
+
+> Copiá este archivo por cada ejercicio que entregues. Nombralo, por ejemplo, `entregas/03-bitacora.md`.
+> Esta bitácora **es parte de la nota**. Un ejercicio sin bitácora no se corrige.
+
+---
+
+## Datos
+
+- **Alumno/a:** Camila Zielonka y Victoria Tandeter
+- **Ejercicio:** N° 03 — Extracción de código repetido a Helpers
+- **Fecha:** ___
+- **Modelo de IA usado:** Claude
+
+---
+
+## 1. 🎯 Qué me pidieron
+
+Sacar dos tipos de código repetido a helpers reutilizables: el patrón de respuestas HTTP (status codes + send/json) que se copiaba en cada endpoint de los controllers, y el cálculo de edad (calcularEdad/agregarEdad), que vivía dentro de alumnos-service.js pero en realidad es una utilidad genérica de fechas, no lógica propia de "alumno".
+
+---
+
+## 2. 💬 Mis prompts (en orden)
+
+### Prompt #1 — Diagnóstico
+
+**Lo que escribí:**
+
+Actuá como un desarrollador backend senior en Node.js, especializado en
+modularización. Contexto: pegué alumnos-controller.js completo, el log-helper.js
+real del proyecto (para mostrar el patrón de estilo: clase con arrow functions
+exportada como instancia única), y las funciones calcularEdad/agregarEdad
+sueltas dentro de alumnos-service.js. Tarea: identificar qué está repetido o
+mal ubicado (sin código todavía) y decir, para cada candidato, si conviene
+seguir el patrón de LogHelper (clase-instancia) o funciones sueltas.
+Restricciones: no cambiar el comportamiento externo, no agregar librerías,
+ser consistente con el estilo real del proyecto.
+
+
+**Auto-chequeo de las 5 partes EFSI** (marcá lo que incluiste):
+- [x] Rol
+- [x] Contexto (¿pegaste código del proyecto?)
+- [x] Tarea
+- [x] Restricciones
+- [x] Iteración
+
+**Qué me devolvió (resumen):**
+Identificó dos candidatos: el patrón try/catch + status codes del controller
+(recomendó un wrapper tipo asyncHandler), y calcularEdad como utilidad
+genérica de fechas (recomendó dejar agregarEdad dentro del service, por ser
+específica del dominio). Para ambos recomendó funciones sueltas, no el
+patrón LogHelper, porque ninguno maneja estado ni depende de .env.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+No tal cual. El diagnóstico de "funciones sueltas vs. clase-instancia" fue
+correcto y lo usamos, pero la solución concreta que propuso (un wrapper
+asyncHandler, y dejar agregarEdad sin mover) no coincidía con lo que pedía
+el enunciado del ejercicio, que pide explícitamente funciones nombradas
+(responderOk, responderNotFound, etc.) y mover las DOS funciones de fecha.
+Tuvimos que redirigir la implementación a lo que pedía la consigna.
+
+### Prompt #2 — Ejecución (helpers)
+
+**Lo que escribí:**
+
+Vamos con funciones sueltas nombradas (responderOk, responderCreated,
+responderNotFound, responderBadRequest, responderError) en
+respuestas-helper.js, en vez del wrapper que propusiste. Y en fechas-helper.js
+mové calcularEdad Y agregarEdad completas (las dos, no solo una), sin dejar
+ninguna en alumnos-service.js. Pegué alumnos-controller.js y
+cursos-controller.js como contexto. Restricciones: mismos status codes que
+antes, funciones sin clase ni estado, no tocar materias-controller.js todavía.
+
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+El diagnóstico no pedía código, así que este prompt fue el paso natural de
+ejecución — pero además tuvo que corregir explícitamente la desviación de
+diseño detectada en el Prompt #1 (wrapper en vez de funciones nombradas,
+agregarEdad sin mover).
+
+### Prompt #3 — Corrección de un archivo incompleto
+
+**Lo que escribí:**
+
+Ojo: me diste una versión de alumnos-service.js que perdió lógica de negocio
+real (la validación de que el curso exista antes de crear/editar un alumno,
+vía CursosService y validarCursoExiste). Te paso el archivo REAL completo:
+[se pegó alumnos-service.js completo, con CursosService y validarCursoExiste].
+La única modificación que quiero es sacar calcularEdad/agregarEdad e
+importarlas desde fechas-helper.js. Todo lo demás debe quedar exactamente
+igual, sin tocar ni una línea.
+
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+En el Prompt #2 nunca le pasamos el alumnos-service.js real completo (solo
+las funciones de fecha sueltas), así que la IA asumió una versión simplificada
+del service y omitió CursosService y validarCursoExiste por completo — un
+error grave que detectamos comparando contra el archivo original antes de
+guardarlo.
+
+---
+
+## 3. 🔧 Qué hizo la IA y qué hice yo
+
+Lo que generó la IA (usado tal cual, después de la corrección del Prompt #3):
+
+- respuestas-helper.js completo: 5 funciones sueltas (responderOk,
+  responderCreated, responderNotFound, responderBadRequest, responderError),
+  con una función interna enviar() que decide .send vs .json según el tipo
+  de dato, para no cambiar el comportamiento exacto de cada endpoint.
+- fechas-helper.js completo: calcularEdad y agregarEdad movidas tal cual.
+- alumnos-controller.js y cursos-controller.js reescritos usando los
+  helpers de respuestas, manteniendo el try/catch original sin envolver.
+- alumnos-service.js, en su segunda versión (la corregida): mismo contenido
+  que el original, solo con el import de fechas-helper.js en vez de las
+  funciones sueltas.
+
+Lo que hicimos nosotras:
+
+- Rechazar la primera propuesta de diseño (wrapper asyncHandler +
+  agregarEdad sin mover) por no ajustarse a la consigna, y redirigir el
+  prompt a la solución pedida explícitamente por el enunciado.
+- Detectar que la primera versión de alumnos-service.js había perdido
+  CursosService y validarCursoExiste, comparándola contra el archivo
+  original, y pedir la corrección pasando el archivo real completo.
+- Crear los archivos en las rutas correctas (src/helpers/) — hubo un error
+  de ERR_MODULE_NOT_FOUND porque no se habían guardado ahí todavía.
+- Verificar en Postman que la validación de curso inexistente siga
+  funcionando después del refactor.
+
+---
+
+## 4. 🐛 Errores o cosas mal que detecté en la respuesta de la IA
+
+El error más importante de todo el ejercicio: en el Prompt #2 no le pasamos
+el alumnos-service.js real completo (solo las funciones de fecha sueltas
+como referencia), y la IA, sin tener el archivo completo, asumió una versión
+simplificada del service "igual al patrón de CursosService" — y esa
+suposición borró por completo la validación de que el id_curso exista
+(CursosService, validarCursoExiste, y las llamadas en createAsync/
+updateAsync). Si no lo hubiéramos comparado línea por línea contra el
+original, hubiéramos subido una regresión real: la API habría dejado de
+validar cursos inexistentes al crear o editar un alumno. Lo detectamos
+comparando contra el archivo que ya teníamos de ejercicios anteriores, y lo
+corregimos pasándole el archivo real completo en un tercer prompt, pidiendo
+explícitamente que no tocara nada más que el import de fechas.
+
+Un segundo punto, más una decisión de diseño que un error: en el diagnóstico
+inicial, la IA propuso un wrapper asyncHandler y dejar agregarEdad sin
+mover del service, dos decisiones razonables en abstracto pero que no
+coincidían con lo que pedía el enunciado del ejercicio. Tuvimos que
+reconocer esa diferencia y redirigir el prompt de ejecución a lo que
+realmente se pedía, en vez de aceptar la primera propuesta sin más.
+
+---
+
+## 5. ✅ Verificación
+
+[x] Los helpers están en src/helpers/ y son import-ables (ES modules).
+Evidencia: respuestas-helper.js y fechas-helper.js guardados en esa
+carpeta; hubo que corregir un ERR_MODULE_NOT_FOUND porque al principio
+no estaban guardados en la ruta correcta.
+
+[x] Cada endpoint que usa el helper quedó más corto y se lee mejor.
+Evidencia: comparación visual de alumnos-controller.js y
+cursos-controller.js antes/después — el res.status(...).send/json(...)
+repetido se reemplazó por una sola llamada a función por caso.
+
+[x] Los status codes no cambiaron: se probó happy path y casos de error
+(404, 400) en Postman.
+Evidencia: GET/POST/PUT/DELETE de alumnos y cursos devolviendo los
+mismos status codes que antes del refactor.
+
+[x] calcularEdad/agregarEdad ya no están definidos dentro de
+alumnos-service.js: viven en fechas-helper.js y el service las importa.
+La edad de los alumnos sigue dando el mismo número.
+Evidencia: revisión del archivo final + comparación del campo edad en
+la respuesta de GET /api/alumnos antes/después.
+
+[x] El helper no quedó atado a una entidad puntual (reutilizable por
+cursos, materias, etc.).
+Evidencia: respuestas-helper.js no menciona ninguna entidad específica
+en su código, solo status codes y datos genéricos.
+
+
+---
+
+## 6. ✍️ Reflexión (300–600 palabras)
+
+Este ejercicio fue el que más nos hizo detenernos a comparar el código generado contra el original, y no solo por seguir la consigna: encontramos un error real que, de no revisarlo, habría llegado a producción.
+
+El proceso empezó con un diagnóstico, tal como recomienda la consigna. La IA identificó bien los dos candidatos a extraer (el patrón de respuestas del controller, y el cálculo de edad), y acertó en un punto conceptual importante: la diferencia entre un helper con estado (como LogHelper, que necesita leer variables de entorno una sola vez) y un helper sin estado (funciones puras, sin nada que inicializar). Esa distinción nos sirvió para entender por qué no todos los helpers del proyecto tienen que seguir el mismo patrón de diseño.
+
+Sin embargo, la solución concreta que propuso —un wrapper que envolviera todo el try/catch, y dejar agregarEdad sin mover del service— no era lo que pedía el enunciado, que exige funciones nombradas puntuales (responderOk, responderNotFound, etc.) y mover las dos funciones de fecha completas. Tuvimos que reconocer esa diferencia entre "una buena idea de diseño" y "lo que efectivamente pide la consigna", y redirigir el pedido a la implementación concreta que necesitábamos.
+
+El momento más importante del ejercicio fue detectar que, al pedir la implementación, no le habíamos pasado a la IA el alumnos-service.js completo —solo las funciones de fecha sueltas, como referencia—. Sin el archivo real, la IA asumió que el service seguía un patrón simple parecido al de CursosService, y generó una versión que eliminaba por completo la validación de que el curso exista (CursosService, validarCursoExiste, y las llamadas correspondientes en createAsync y updateAsync). Si hubiéramos guardado esa versión sin comparar contra el archivo original, la API habría dejado de rechazar alumnos creados con un id_curso inexistente, un bug silencioso que probablemente no se hubiera notado hasta mucho después. Lo detectamos comparando línea por línea contra el archivo que ya teníamos de ejercicios anteriores, y lo corregimos pasándole el archivo completo real en un prompt nuevo, pidiendo explícitamente que la única modificación fuera el import de las funciones de fecha.
+
+De este ejercicio nos llevamos dos aprendizajes concretos. Primero, que dar contexto incompleto a la IA no genera errores evidentes, sino errores silenciosos y plausibles: el código que devolvió corría perfectamente bien, solo que le faltaba una validación entera, y eso es mucho más difícil de detectar que un error de sintaxis. Segundo, que verificar "el código se ve bien" no alcanza: hay que comparar explícitamente contra lo que existía antes, método por método, para confirmar que no se perdió ningún comportamiento en el camino. En un refactor, lo que no cambia es tan importante como lo que sí cambia.
+
+---
+
+## 7. 🔗 Adjuntos
+
+- [ ] Link/PDF de la conversación completa con la IA
+- [ ] Commit(s) en GitHub: `____________`
+- [ ] Capturas / evidencias de verificación
