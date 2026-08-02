@@ -1,0 +1,276 @@
+# 📓 Bitácora de Prompts — Ejercicio N° 04
+
+> Copiá este archivo por cada ejercicio que entregues. Nombralo, por ejemplo, `entregas/04-bitacora.md`.
+> Esta bitácora **es parte de la nota**. Un ejercicio sin bitácora no se corrige.
+
+---
+
+## Datos
+
+- **Alumno/a:** Camila Zielonka y Victoria Tandeter
+- **Ejercicio:** N° 04 — Validaciones y códigos de error
+- **Fecha:** _16/07 __
+- **Modelo de IA usado:** Claude
+
+---
+
+## 1. 🎯 Qué me pidieron
+
+Agregar validación real de input (hoy casi no existía: los `??` del repository dejaban pasar cualquier cosa y Postgres terminaba manejando los errores de forma cruda). Había que unificar cómo se valida el `id` de la URL, validar el body de `alumnos`, distinguir claramente errores de cliente (400/404/409) de errores de servidor (500), y asegurarse de que ningún mensaje de error filtrara detalles internos de Postgres.
+
+---
+
+## 2. 💬 Mis prompts (en orden)
+
+### Prompt #1 — Auditoría de validación
+
+**Lo que escribí:**
+```
+Actuá como un desarrollador backend senior en Node.js, especializado en
+validación de input y manejo de errores HTTP. Contexto: pegué
+alumnos-controller.js, alumnos-service.js y alumnos-repository.js completos.
+Tarea: sin escribir código, armar una tabla con todos los inputs posibles
+(body de POST/PUT, params de la URL) y qué pasa hoy si vienen vacíos, con
+tipo incorrecto, o fuera de rango. Prestar atención especial al id de la URL
+(GET/DELETE lo usan como string, PUT le hace parseInt), a los ?? del
+repository, y a si los mensajes de error filtran detalles de Postgres.
+```
+
+**Auto-chequeo de las 5 partes EFSI** (marcá lo que incluiste):
+- [x] Rol
+- [x] Contexto (¿pegaste código del proyecto?)
+- [x] Tarea
+- [x] Restricciones
+- [x] Iteración
+
+**Qué me devolvió (resumen):**
+Una tabla completa por endpoint/campo, detectando correctamente que los `??`
+solo cubren `undefined`/`null` (no strings vacíos reales ni `NaN`), que el
+`id` se maneja de forma inconsistente entre `GET`/`DELETE` (string) y `PUT`
+(parseInt), y que el catch genérico filtra el mensaje crudo de Postgres al
+cliente.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió como base, pero detectamos nosotras mismas un par de imprecisiones
+menores en el diagnóstico (por ejemplo, sobre qué pasa exactamente si el id
+del PUT viene no-numérico, dado que `NaN !== NaN` en JS haría que el chequeo
+de "id no coincide" se dispare antes de llegar a Postgres). No hizo falta
+repreguntarlo porque no afectaba el resto del análisis.
+
+### Prompt #2 — Diseño del patrón de validación
+
+**Lo que escribí:**
+```
+Con ese diagnóstico como base, comparar 3 opciones (middleware, validación
+en el service, librería tipo zod/joi) con pros y contras para este proyecto
+puntual (educativo, sin dependencias pesadas). Pedí también dónde ubicar un
+helper que unifique la validación/conversión del id (parsearId), y cómo
+distinguir error de cliente (4xx) de error de servidor (500) sin filtrar el
+mensaje crudo de Postgres. Restricción: si recomendás una librería, justificar
+el trade-off de sumar una dependencia nueva.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+No fue por un error — es el segundo paso de la iteración planeada: primero
+diagnóstico, después diseño, recién al final implementación.
+
+**Qué me devolvió (resumen):**
+Recomendó middleware genérico para validación de forma (incluyendo
+`parsearId`), mantener la validación de negocio en el service (como ya hacía
+`validarCursoExiste`), y una clase de error propia (`AppError` con
+`statusCode`) para distinguir 4xx de 500 sin depender de comparar texto de
+mensajes. Recomendó explícitamente **no** sumar una librería externa,
+justificando que el volumen de campos/entidades del proyecto no lo amerita
+y que en un contexto educativo conviene poder señalar la línea de código
+exacta en el oral.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió tal cual — la recomendación coincidía con nuestro propio criterio
+(no meter dependencias nuevas sin necesidad real), así que avanzamos
+directo a la implementación con ese plan.
+
+### Prompt #3 — Implementación de AppError + catch centralizado
+
+**Lo que escribí:**
+```
+Implementar la clase AppError (extiende Error, guarda statusCode),
+actualizar validarCursoExiste en alumnos-service.js para que lance AppError
+en vez de Error simple, y mostrar cómo debería quedar el catch de UN
+endpoint de ejemplo (GET /:id de alumnos) para distinguir AppError (4xx,
+mensaje propio) de cualquier otro error (siempre 500, mensaje genérico,
+logueado con LogHelper). Restricción: no cambiar el status code de los
+casos que ya funcionan bien.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+Era el primer paso de la fase de ejecución, deliberadamente acotado a un
+solo endpoint de ejemplo antes de replicar el patrón a los otros 9 (5 de
+alumnos + 5 de cursos), para poder revisarlo con cuidado antes de escalarlo.
+
+**Qué me devolvió (resumen):**
+`app-error.js` correcto (clase que extiende `Error`, guarda `statusCode`).
+`validarCursoExiste` actualizado para lanzar `AppError` con `400`,
+justificando por qué 400 y no 404 (el problema es del dato que referencia
+el body, no de un recurso buscado directamente). El catch de ejemplo usa
+`instanceof AppError` para decidir entre responder con el mensaje propio o
+con un 500 genérico logueado por `LogHelper`.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió tal cual, sin corregir nada — confirmamos el import de `LogHelper`
+contra el archivo real (que se exporta como instancia única) antes de dar
+por válido el catch.
+
+### Prompt #4 — parsearId + validación de forma + resto de endpoints
+
+**Lo que escribí:**
+```
+Crear parsear-id-middleware.js (convierte y valida el id de la URL, corta
+con 400 si no es entero positivo) y validar-alumno-middleware.js (valida
+forma del body: nombre/apellido no vacíos, id_curso numérico, fecha válida,
+hace_deportes booleano/binario). Aplicar parsearId en GET/:id, PUT/:id,
+DELETE/:id de alumnos Y cursos (mismo archivo, reutilizado). Aplicar el
+patrón de catch con AppError a los 4 endpoints restantes de alumnos y a
+los 5 de cursos. Restricción: parsearId debe ser un solo archivo compartido
+entre entidades, no uno por entidad.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+Era la continuación natural de la iteración: una vez validado el patrón en
+un endpoint, escalarlo al resto.
+
+**Qué me devolvió (resumen):**
+Los 4 archivos completos (`parsear-id-middleware.js`,
+`validar-alumno-middleware.js`, `alumnos-controller.js`,
+`cursos-controller.js`), aplicando `parsearId` de forma reutilizada en
+ambas entidades y el patrón de catch consistente en los 9 endpoints
+restantes.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+No tal cual. La misma IA detectó y avisó honestamente un efecto colateral
+real: al aplicar `validarAlumnoMiddleware` (que exige todos los campos) al
+`PUT`, se rompía el update parcial que `updateAsync` sí soporta (con sus
+`??` que conservan el valor anterior si el campo no viene). Tuvimos que
+corregirlo nosotras separando la validación en dos funciones:
+`validarAlumnoCompleto` (todos los campos obligatorios, para `POST`) y
+`validarAlumnoParcial` (cada campo se valida solo si vino, para `PUT`).
+
+---
+
+## 3. 🔧 Qué hizo la IA y qué hice yo
+
+Lo que generó la IA (usado tal cual, salvo la corrección de la Tarea 4):
+
+- La tabla de auditoría completa del Prompt #1.
+- El análisis comparativo de las 3 estrategias de validación del Prompt #2,
+  con la recomendación justificada de no usar librería externa.
+- `app-error.js` completo.
+- `validarCursoExiste` actualizado para lanzar `AppError` con 400,
+  justificado.
+- El patrón de catch con `instanceof AppError` + `LogHelper`, aplicado a
+  los 10 endpoints (5 de alumnos + 5 de cursos).
+- `parsear-id-middleware.js` completo, reutilizado entre ambas entidades.
+- La primera versión de `validar-alumno-middleware.js` (que exigía todos
+  los campos siempre).
+
+Lo que hicimos nosotras:
+
+- Elegir el patrón (middleware + service + AppError, sin librería) después
+  de comparar las 3 opciones, en vez de aceptar la primera sugerencia.
+- Detectar y corregir el bug del `PUT` con validación completa: separamos
+  el middleware en `validarAlumnoCompleto` (POST) y `validarAlumnoParcial`
+  (PUT), escribiendo nosotras mismas la versión parcial a partir de la
+  completa que ya teníamos, sin necesitar un nuevo prompt.
+- Verificar en Postman los 4 casos críticos: id no numérico, body vacío en
+  POST, PUT parcial que no pisa los demás campos, y `id_curso` inexistente
+  siguiendo devolviendo el mismo mensaje que antes del refactor.
+- Confirmar que el import de `LogHelper` (exportado como instancia única
+  en el proyecto real) se usara correctamente en los catches nuevos.
+
+---
+
+## 4. 🐛 Errores o cosas mal que detecté en la respuesta de la IA
+
+El error más importante de este ejercicio: al aplicar `validarAlumnoMiddleware`
+(que exige los 5 campos) también en el endpoint `PUT`, se rompía el
+comportamiento de **update parcial** que ya existía en `updateAsync` (los
+`??` que conservan el valor anterior cuando un campo no viene en el body).
+Un `PUT` con solo `{ "nombre": "Juan" }` habría empezado a devolver 400 en
+vez de actualizar solo ese campo — una regresión real de una funcionalidad
+que sí funcionaba antes de este ejercicio. Lo notable es que en este caso
+fue la propia IA la que avisó del efecto colateral en sus notas, en vez de
+que lo detectáramos nosotras leyendo el código con cuidado; igual tuvimos
+que ser nosotras quienes decidieran cómo resolverlo (separar en
+`validarAlumnoCompleto` y `validarAlumnoParcial`) y quienes escribieran esa
+separación.
+
+Un segundo punto, menor: en el diagnóstico del Prompt #1, la descripción de
+qué pasa si el `id` del `PUT` no es numérico no terminaba de ser precisa
+(no consideraba que `parseInt(entity.id) !== NaN` siempre da `true` en JS,
+por lo que probablemente el chequeo de "id no coincide" se dispare antes de
+llegar a Postgres). No lo corregimos porque no afectaba el resto del
+análisis ni la implementación final, pero lo dejamos anotado como un
+detalle a tener presente para el oral.
+
+---
+
+## 5. ✅ Verificación
+
+```
+[x] POST /api/alumnos con body {} devuelve 400 (no 500, no un 201 con
+    campos vacíos).
+    Evidencia: probado en Postman, devuelve 400 con el mensaje de nombre
+    obligatorio.
+
+[x] POST con id_curso que no existe sigue devolviendo el error de negocio
+    correcto (no se rompió validarCursoExiste).
+    Evidencia: POST con id_curso: 999 sigue devolviendo 400 con
+    "El curso con id 999 no existe.", ahora vía AppError.
+
+[x] GET /api/alumnos/abc (id no numérico) devuelve 400 con un mensaje
+    claro, no un 500 críptico.
+    Evidencia: probado en Postman, devuelve 400
+    "El id debe ser un número entero positivo."
+
+[x] El id se valida y convierte con un solo helper (parsearId), usado en
+    GET, PUT y DELETE — ya no hay un endpoint con parseInt y otro sin él.
+    Evidencia: revisión de código — parsear-id-middleware.js es un único
+    archivo importado igual en alumnos-controller.js y cursos-controller.js.
+
+[x] Los mensajes de error no incluyen el texto crudo de PostgreSQL.
+    Evidencia: revisión de los catches — cualquier error que no sea
+    AppError responde siempre con el mensaje genérico "Error interno del
+    servidor", nunca con error.message directo.
+
+[x] La validación es consistente: alumnos y cursos validan con el mismo
+    patrón.
+    Evidencia: mismo parsearId reutilizado, mismo patrón de catch con
+    instanceof AppError en ambos controllers.
+
+[x] PUT con update parcial (solo un campo) sigue funcionando después de
+    agregar validación.
+    Evidencia: PUT /api/alumnos/1 con solo {"nombre": "Juan editado"}
+    devuelve 200 y el resto de los campos del alumno no cambia — esto
+    confirma que el bug detectado se corrigió bien.
+```
+
+---
+
+## 6. ✍️ Reflexión (300–600 palabras)
+
+Este fue el ejercicio donde más capas de decisión tuvimos que tomar antes de escribir código: primero entender qué estaba realmente mal (auditoría), después decidir cómo resolverlo en términos de arquitectura (middleware vs. service vs. librería), y recién al final implementar. Seguir ese orden, en vez de pedir directamente "agregá validaciones", nos obligó a razonar cada decisión en vez de aceptar la primera solución que apareciera.
+
+La decisión de diseño más importante fue no sumar una librería de validación (zod, joi) a pesar de que la IA reconoció que es la solución "correcta" en un proyecto de producción. El argumento que nos convenció fue puntual: en un contexto educativo, el objetivo es poder explicar en el oral por qué algo devuelve 400, señalando la línea exacta de código; una librería resuelve el problema pero también lo oculta detrás de un motor de validación externo. Elegimos middleware para validación de forma, el service para validación de negocio (siguiendo el precedente que ya existía con `validarCursoExiste`), y una clase `AppError` propia para distinguir errores de cliente de errores de servidor sin depender de comparar texto de mensajes.
+
+El bug más importante que detectamos —o mejor dicho, que la propia IA nos avisó honestamente que podía pasar— fue que aplicar la misma validación "todos los campos obligatorios" al `PUT` rompía el update parcial que ya existía en el proyecto (los `??` del repository que conservan el valor anterior si un campo no viene). Si no lo hubiéramos resuelto, cualquier `PUT` que mandara solo un campo para editar habría empezado a fallar con 400, una regresión de una funcionalidad que funcionaba perfectamente antes de este ejercicio. Lo solucionamos separando la validación en dos funciones: una que exige todos los campos (para `POST`) y otra que valida cada campo solo si viene presente (para `PUT`), preservando el comportamiento de update parcial.
+
+También tuvimos que revisar con cuidado la justificación de por qué `validarCursoExiste` lanza 400 y no 404 cuando el curso referenciado no existe. El argumento que terminamos aceptando es que un 404 correspondería a "el recurso que pediste no existe" (como en un `GET /api/cursos/999`), mientras que acá el problema es que el body del alumno hace referencia a un curso inexistente — es un error sobre el dato que enviaste, no sobre un recurso que buscaste directamente. Esta distinción es sutil pero importante, y es justo el tipo de cosa que hay que poder defender con un ejemplo concreto en el oral.
+
+Lo que más aprendimos de este ejercicio es que la validación bien pensada no es solo "agregar más `if`", sino decidir en qué capa vive cada tipo de chequeo (forma vs. negocio), y qué status code corresponde a cada situación según quién es responsable del error (el cliente que mandó mal el dato, o el servidor que falló inesperadamente). También aprendimos que pedirle a la IA que audite antes de escribir código expone efectos colaterales (como el del `PUT` parcial) que de otra forma podrían pasar completamente desapercibidos hasta que un usuario real los sufra.
+
+---
+
+## 7. 🔗 Adjuntos
+
+- [ ] Link/PDF de la conversación completa con la IA
+- [ ] Commit(s) en GitHub: `____________`
+- [ ] Capturas / evidencias de verificación

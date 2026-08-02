@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import AlumnosService from './../services/alumnos-service.js'
 import Alumno from './../entities/alumno.js'
+import { validarAlumnoCompleto, validarAlumnoParcial } from './../middlewares/validar-alumno-middleware.js';
 
 const router = Router();
 const currentService = new AlumnosService();
@@ -63,7 +64,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-router.post('', async (req, res) => {
+router.post('', validarAlumnoCompleto, async (req, res) => {
     try {
         let entity = req.body;
         const newId = await currentService.createAsync(entity);
@@ -76,9 +77,12 @@ router.post('', async (req, res) => {
         console.log(error);
         res.status(StatusCodes.BAD_REQUEST).send(`Error: ${error.message}`);
     }
+    
 });
 
-router.put('/:id', async (req, res) => {
+
+
+router.put('/:id', parsearId, validarAlumnoParcial, async (req, res) => {
     try {
         let id = parseInt(req.params.id);
         let entity = req.body;

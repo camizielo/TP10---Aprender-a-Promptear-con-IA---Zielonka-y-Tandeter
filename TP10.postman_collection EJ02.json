@@ -2,10 +2,8 @@
   "info": {
     "_postman_id": "7c06c23e-b4e5-41aa-9a32-5fc03ec79e14",
     "name": "TP10",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "56561998",
-    "_collection_link": "https://go.postman.co/collection/56561998-7c06c23e-b4e5-41aa-9a32-5fc03ec79e14?source=collection_link"
-  },
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+   },
   "item": [
     {
       "name": "New Request",
