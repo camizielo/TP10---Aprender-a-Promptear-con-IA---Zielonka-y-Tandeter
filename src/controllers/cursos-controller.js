@@ -4,6 +4,7 @@ import CursosService from './../services/cursos-service.js'
 import AppError from './../helpers/app-error.js';
 import LogHelper from './../helpers/log-helper.js';
 import parsearId from './../middlewares/parsear-id-middleware.js';
+import verificarToken from './../middlewares/verificar-token-middleware.js';
 
 const router = Router();
 const currentService = new CursosService();
@@ -46,7 +47,7 @@ router.get('/:id', parsearId, async (req, res) => {
     }
 });
 
-router.post('', async (req, res) => {
+router.post('', verificarToken, async (req, res) => {
     try {
         let entity = req.body;
         const newId = await currentService.createAsync(entity);
@@ -65,7 +66,7 @@ router.post('', async (req, res) => {
     }
 });
 
-router.put('/:id', parsearId, async (req, res) => {
+router.put('/:id', verificarToken, parsearId, async (req, res) => {
     try {
         let id = req.params.id;
         let entity = req.body;
@@ -91,7 +92,7 @@ router.put('/:id', parsearId, async (req, res) => {
     }
 });
 
-router.delete('/:id', parsearId, async (req, res) => {
+router.delete('/:id', verificarToken, parsearId, async (req, res) => {
     try {
         let id = req.params.id;
         const rowCount = await currentService.deleteByIdAsync(id);

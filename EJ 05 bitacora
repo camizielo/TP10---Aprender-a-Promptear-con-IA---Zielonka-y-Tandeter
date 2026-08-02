@@ -1,0 +1,258 @@
+# 📓 Bitácora de Prompts — Ejercicio N° 05
+
+> Copiá este archivo por cada ejercicio que entregues. Nombralo, por ejemplo, `entregas/05-bitacora.md`.
+> Esta bitácora **es parte de la nota**. Un ejercicio sin bitácora no se corrige.
+
+---
+
+## Datos
+
+- **Alumno/a:** Camila Zielonka y Victoria Tandeter
+- **Ejercicio:** N° 05 — Middleware de Autenticación con JWT
+- **Fecha:** ___
+- **Modelo de IA usado:** Claude
+
+---
+
+## 1. 🎯 Qué me pidieron
+
+Agregar autenticación con JWT a la API, que hasta ahora era 100% pública. Había que crear un endpoint de login que devuelva un token, un middleware que valide ese token en el header `Authorization`, y proteger los endpoints de escritura (POST/PUT/DELETE) dejando los de lectura (GET) públicos.
+
+---
+
+## 2. 💬 Mis prompts (en orden)
+
+### Prompt #1 — Diseño (sin código todavía)
+
+**Lo que escribí:**
+```
+Actuá como un desarrollador backend senior en Node.js, especializado en
+seguridad y autenticación con JWT. Contexto: API en capas, ES modules,
+jsonwebtoken ya instalado, JWT_SECRET/JWT_EXPIRES_IN en .env. Tarea: sin
+código todavía, explicar el diseño del login, del middleware de validación,
+y cómo aplicarlo selectivamente. Pedí explícitamente: verify vs decode y
+por qué importa, cómo distinguir los 3 casos de 401 (sin header, mal
+formado, inválido/expirado), y si un JWT está encriptado. Restricciones:
+secreto desde .env, token con expiración, login con usuario/clave fijos
+pero explicando qué le falta para producción.
+```
+
+**Auto-chequeo de las 5 partes EFSI** (marcá lo que incluiste):
+- [x] Rol
+- [x] Contexto (¿pegaste código del proyecto?)
+- [x] Tarea
+- [x] Restricciones
+- [x] Iteración
+
+**Qué me devolvió (resumen):**
+Un diseño completo: el login compara usuario/clave contra variables de
+entorno (no hardcodeadas ni siquiera como valores fijos en el código), con
+mensaje de error genérico "usuario o clave incorrectos" para evitar
+enumeración de usuarios. Explicó correctamente que `verify` recalcula la
+firma y `decode` no valida nada, por lo que el middleware debe usar
+siempre `verify`. Confirmó que un JWT está firmado pero NO encriptado (el
+payload es legible por cualquiera en base64), por lo que nunca hay que
+meter datos sensibles ahí. Propuso diferenciar mensajes (no status codes)
+entre los 3 casos de 401, y dejó como decisión nuestra si además
+diferenciar "token expirado" de "token inválido".
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió tal cual como diseño. Tuvimos que tomar nosotras una decisión que
+la IA dejó abierta: sí diferenciar "token expirado" de "token inválido"
+con mensajes distintos, porque no representa un riesgo de seguridad y
+ayuda al debugging.
+
+### Prompt #2 — Implementación inicial
+
+**Lo que escribí:**
+```
+Confirmo el diseño, con el ajuste de diferenciar TokenExpiredError de
+JsonWebTokenError. Tarea: verificar-token-middleware.js (usa jwt.verify,
+nunca decode, distingue los 4 casos de 401), auth-controller.js con
+POST /api/auth/login, y mostrar alumnos-controller.js con verificarToken
+aplicado solo en POST/PUT/DELETE. Pegué alumnos-controller.js completo
+como contexto. Restricción: secreto y credenciales siempre desde
+process.env, nunca hardcodeados ni con fallback.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+Era el paso natural de ejecución después del diseño confirmado.
+
+**Qué me devolvió (resumen):**
+Los dos archivos nuevos correctos (middleware con los 4 casos de 401
+diferenciados, login con comparación segura). Pero el `alumnos-controller.js`
+que devolvió estaba basado en una versión vieja del archivo (sin el
+`AppError`/`LogHelper`/`parsearId` del ejercicio 04), porque el archivo real
+que le pegamos como contexto en ese momento resultó no ser la versión
+actualizada.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+No tal cual. Detectamos que el `alumnos-controller.js` real en disco tenía
+un bug propio (usaba `parsearId` en el `PUT` sin importarlo, lo que hubiera
+roto el servidor al arrancar) y que además nunca había llegado a tener
+aplicado completamente el patrón del ejercicio 04. Hizo falta un tercer
+prompt para corregir todo junto.
+
+### Prompt #3 — Corrección de bug propio + aplicación completa
+
+**Lo que escribí:**
+```
+Reescribir alumnos-controller.js desde cero, corrigiendo el bug del
+parsearId no importado, aplicando el patrón AppError/LogHelper en los 5
+catches, parsearId en los 3 endpoints con :id, y verificarToken en
+POST/PUT/DELETE como primer middleware. Pegué el archivo real actual
+(con el bug) como contexto.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+El archivo real en disco tenía una regresión previa no detectada hasta
+este punto (el bug de `parsearId` sin importar), y el intento anterior de
+aplicar JWT se había basado en una copia desactualizada. Hubo que resolver
+ambas cosas en un solo prompt para no perder más contexto entre iteraciones.
+
+**Qué me devolvió (resumen):**
+Corrigió el import faltante de `parsearId`, aplicó `AppError`/`LogHelper`
+en los 5 catches, `parsearId` en `GET/:id`, `PUT/:id`, `DELETE/:id` — pero
+en esta vuelta **se olvidó de aplicar `verificarToken`**, que era el
+objetivo central del ejercicio.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+No. Tuvimos que pedir explícitamente, en un prompt corto de seguimiento,
+que agregara `verificarToken` en `POST`/`PUT`/`DELETE`, ya que se había
+perdido en el camino de arreglar lo demás.
+
+### Prompt #4 — Aplicar a cursos y materias
+
+**Lo que escribí:**
+```
+Aplicar exactamente el mismo patrón (verificarToken como primer middleware
+en POST/PUT/DELETE) a cursos-controller.js y materias-controller.js,
+pegando ambos archivos reales completos, sin cambiar nada más de la
+lógica existente.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+Último paso de la iteración: una vez validado el patrón en `alumnos`,
+replicarlo al resto de las entidades.
+
+**Qué me devolvió (resumen):**
+Aplicó `verificarToken` correctamente a las dos entidades. Notó y avisó,
+sin que se lo pidiéramos, que `materias-controller.js` nunca había recibido
+el refactor de `AppError`/`parsearId` del ejercicio 04, y respetó la
+restricción de "no cambiar nada más" dejándolo con su manejo de errores
+original, en vez de aplicar cambios no solicitados.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió tal cual — el comportamiento de respetar la restricción explícita en
+vez de "mejorar" código no pedido fue justo lo que buscábamos.
+
+---
+
+## 3. 🔧 Qué hizo la IA y qué hice yo
+
+Lo que generó la IA (usado tal cual, después de las correcciones):
+
+- `verificar-token-middleware.js` completo: usa `jwt.verify`, distingue
+  4 casos de 401 (sin header, mal formado, expirado, inválido).
+- `auth-controller.js` completo: login con comparación segura, mensaje
+  genérico para no revelar qué credencial falló, firma con `jwt.sign`
+  leyendo `JWT_SECRET`/`JWT_EXPIRES_IN` de `.env`.
+- `alumnos-controller.js`, `cursos-controller.js`, `materias-controller.js`
+  con `verificarToken` aplicado en `POST`/`PUT`/`DELETE`, dejando los `GET`
+  públicos en las tres.
+
+Lo que hicimos nosotras:
+
+- Decidir diferenciar "token expirado" de "token inválido" (la IA lo dejó
+  como opción, no como decisión propia).
+- Instalar `jsonwebtoken` y completar el `.env` real con `JWT_SECRET`,
+  `JWT_EXPIRES_IN`, `AUTH_USUARIO`, `AUTH_CLAVE` (valores reales, nunca
+  compartidos con la IA).
+- Detectar que el `alumnos-controller.js` real tenía un bug propio
+  (`parsearId` usado sin importar) que hubiera roto el servidor, sin
+  relación directa con este ejercicio pero que había que resolver antes
+  de seguir.
+- Detectar que, al corregir ese bug, la IA se olvidó de aplicar
+  `verificarToken` (el objetivo real del ejercicio) y pedir explícitamente
+  que lo agregara.
+- Registrar `auth-controller.js` en `server.js` y confirmar que `dotenv`
+  esté cargado ahí.
+- Probar en Postman los 6 casos de verificación (login correcto/incorrecto,
+  DELETE sin token, con token mal formado, con token válido, GET sin token).
+
+---
+
+## 4. 🐛 Errores o cosas mal que detecté en la respuesta de la IA
+
+El error más significativo de este ejercicio no estuvo en el diseño de
+JWT en sí (que fue correcto desde el primer prompt), sino en un problema
+de continuidad entre ejercicios: nuestro `alumnos-controller.js` real
+tenía, sin que lo hubiéramos notado, un bug activo (`parsearId` usado en
+el `PUT` sin el `import` correspondiente) que hubiera hecho fallar el
+servidor al arrancar con `ReferenceError`. Este bug no lo generó la IA en
+este ejercicio — venía de una aplicación incompleta del ejercicio 04 en
+nuestro propio código. Lo detectamos al comparar el archivo real contra lo
+que habíamos diseñado antes.
+
+Un segundo problema, este sí directamente de la IA: al pedirle que
+corrigiera ese bug y aplicara el patrón completo (AppError + parsearId +
+JWT) en un solo prompt, la corrección de los primeros dos puntos salió
+bien, pero **se olvidó por completo de aplicar `verificarToken`**, que era
+el objetivo real de este ejercicio 05. Es un recordatorio de que pedir
+varias cosas en un solo prompt de "arreglá todo esto" aumenta el riesgo de
+que algo se pierda en el camino — hubo que revisar explícitamente ítem por
+ítem contra lo pedido, y notamos la ausencia recién al comparar contra
+nuestra propia lista de verificación antes de guardar el archivo.
+
+---
+
+## 5. ✅ Verificación
+
+```
+[ ] POST /api/auth/login con credenciales correctas devuelve un token; con
+    incorrectas, 401.
+    Evidencia: [completar con captura de Postman]
+
+[ ] DELETE /api/alumnos/3 sin header Authorization devuelve 401.
+    Evidencia: [completar con captura de Postman]
+
+[ ] Con un token inválido o vencido devuelve 401.
+    Evidencia: [completar con captura de Postman]
+
+[ ] Con un token válido funciona normal.
+    Evidencia: [completar con captura de Postman]
+
+[x] El secreto está en .env (no quedó hardcodeado en ningún .js).
+    Evidencia: revisión de auth-controller.js y verificar-token-middleware.js
+    — ambos leen process.env.JWT_SECRET, sin ningún valor fijo ni fallback.
+
+[x] El middleware usa jwt.verify (no jwt.decode).
+    Evidencia: revisión de verificar-token-middleware.js línea por línea.
+
+[ ] El .env con el secreto no está commiteado (está en .gitignore).
+    Evidencia: [confirmar que .env sigue en .gitignore desde el ejercicio 01]
+```
+
+> Nota: los primeros 4 puntos requieren correr la colección de Postman
+> adjunta contra el servidor real antes de marcarlos. Completar con las
+> capturas correspondientes antes de la entrega final.
+
+---
+
+## 6. ✍️ Reflexión (300–600 palabras)
+
+Para este ejercicio seguimos la secuencia de diseño-antes-que-código que ya nos había servido en el ejercicio 04: primero le pedimos a la IA que explicara el diseño completo (login, middleware, aplicación selectiva) sin escribir nada, y recién ahí pasamos a la implementación. Esto nos permitió entender de antemano por qué el middleware tiene que usar `jwt.verify` y nunca `jwt.decode` —porque `decode` solo lee el contenido sin comprobar la firma, mientras que `verify` la recalcula contra nuestro secreto y falla si algo fue alterado— y por qué un JWT no está encriptado sino solo firmado, lo cual determina qué tipo de datos es seguro meter en el payload.
+
+Una decisión que tomamos nosotras, no la IA: diferenciar el mensaje de "token expirado" del de "token inválido" en el middleware, en vez de usar un único mensaje genérico para los tres casos de 401. La IA nos presentó las dos opciones sin inclinarse por ninguna, y elegimos diferenciarlos porque no representa ningún riesgo de seguridad (a diferencia de diferenciar "usuario no existe" de "clave incorrecta" en el login, que sí filtraría información útil para un atacante) y porque ayuda a debuggear más rápido si algo falla.
+
+El tramo más revelador del ejercicio no fue sobre JWT en sí, sino sobre un problema que arrastrábamos del ejercicio anterior: nuestro `alumnos-controller.js` real tenía un bug activo que no habíamos notado —usaba `parsearId` en el endpoint `PUT` sin haberlo importado nunca, lo cual hubiera hecho crashear el servidor al arrancar con un `ReferenceError`—. Lo descubrimos recién en este ejercicio, al comparar cuidadosamente el archivo real contra lo que creíamos que teníamos. Esto nos hizo pensar en que la verificación de "¿anda o no anda?" (correr el servidor y ver si arranca) es una comprobación mínima que deberíamos hacer inmediatamente después de cada cambio, no varios ejercicios después.
+
+El segundo aprendizaje importante fue sobre los límites de pedirle a la IA que corrija varias cosas en un solo prompt. Cuando le pedimos que arreglara el bug de `parsearId`, aplicara el patrón de errores completo, y agregara la autenticación JWT todo junto, la corrección de los dos primeros puntos salió perfecta, pero se olvidó completamente de aplicar `verificarToken` —que era, paradójicamente, el objetivo central de todo el ejercicio—. Tuvimos que notarlo nosotras comparando el resultado contra una checklist propia de lo que habíamos pedido, y pedir un cuarto prompt corto solo para ese punto puntual. Esto refuerza algo que ya veníamos aprendiendo en ejercicios anteriores: cuantas más cosas distintas se piden en un solo prompt, más probable es que alguna se pierda, y la única forma confiable de detectarlo es comparar explícitamente el resultado contra cada punto de la tarea original, uno por uno, en vez de asumir que "si el código se ve bien, está completo".
+
+---
+
+## 7. 🔗 Adjuntos
+
+- [ ] Link/PDF de la conversación completa con la IA
+- [ ] Commit(s) en GitHub: `____________`
+- [ ] Capturas / evidencias de verificación (login, DELETE sin token, con token vencido, con token válido)
