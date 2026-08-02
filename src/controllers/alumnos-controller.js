@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import AlumnosService from './../services/alumnos-service.js'
 import Alumno from './../entities/alumno.js'
+import AppError from './../helpers/app-error.js';
+import LogHelper from './../helpers/log-helper.js';
+import parsearId from './../middlewares/parsear-id-middleware.js';
 import { validarAlumnoCompleto, validarAlumnoParcial } from './../middlewares/validar-alumno-middleware.js';
+
 
 const router = Router();
 const currentService = new AlumnosService();
@@ -44,12 +48,16 @@ router.get('', async (req, res) => {
             res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error interno.`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', parsearId, async (req, res) => {
     try {
         let id = req.params.id;
         const returnEntity = await currentService.getByIdAsync(id);
@@ -59,12 +67,17 @@ router.get('/:id', async (req, res) => {
             res.status(StatusCodes.NOT_FOUND).send(`No se encontro la entidad (id:${id}).`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
-router.post('', validarAlumnoCompleto, async (req, res) => {
+router.post('', validarAlumnoCompleto, async (req, res) => { 
+
     try {
         let entity = req.body;
         const newId = await currentService.createAsync(entity);
@@ -74,17 +87,18 @@ router.post('', validarAlumnoCompleto, async (req, res) => {
             res.status(StatusCodes.BAD_REQUEST).json(null);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.BAD_REQUEST).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
-    
 });
 
-
-
 router.put('/:id', parsearId, validarAlumnoParcial, async (req, res) => {
-    try {
-        let id = parseInt(req.params.id);
+        try {
+        let id = req.params.id;
         let entity = req.body;
 
         if (entity.id && parseInt(entity.id) !== id) {
@@ -99,12 +113,16 @@ router.put('/:id', parsearId, validarAlumnoParcial, async (req, res) => {
             res.status(StatusCodes.NOT_FOUND).send(`No se encontro la entidad (id:${id}).`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.BAD_REQUEST).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', parsearId, async (req, res) => {
     try {
         let id = req.params.id;
         const rowCount = await currentService.deleteByIdAsync(id);
@@ -114,11 +132,13 @@ router.delete('/:id', async (req, res) => {
             res.status(StatusCodes.NOT_FOUND).send(`No se encontro la entidad (id:${id}).`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
-
-
 
 export default router;

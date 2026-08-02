@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import CursosService from './../services/cursos-service.js'
+import AppError from './../helpers/app-error.js';
+import LogHelper from './../helpers/log-helper.js';
+import parsearId from './../middlewares/parsear-id-middleware.js';
 
 const router = Router();
 const currentService = new CursosService();
@@ -15,12 +18,16 @@ router.get('', async (req, res) => {
             res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error interno.`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', parsearId, async (req, res) => {
     try {
         let id = req.params.id;
         const returnEntity = await currentService.getByIdAsync(id);
@@ -30,8 +37,12 @@ router.get('/:id', async (req, res) => {
             res.status(StatusCodes.NOT_FOUND).send(`No se encontro la entidad (id:${id}).`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
@@ -45,14 +56,18 @@ router.post('', async (req, res) => {
             res.status(StatusCodes.BAD_REQUEST).json(null);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.BAD_REQUEST).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', parsearId, async (req, res) => {
     try {
-        let id = parseInt(req.params.id);
+        let id = req.params.id;
         let entity = req.body;
 
         if (entity.id && parseInt(entity.id) !== id) {
@@ -67,12 +82,16 @@ router.put('/:id', async (req, res) => {
             res.status(StatusCodes.NOT_FOUND).send(`No se encontro la entidad (id:${id}).`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.BAD_REQUEST).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', parsearId, async (req, res) => {
     try {
         let id = req.params.id;
         const rowCount = await currentService.deleteByIdAsync(id);
@@ -82,8 +101,12 @@ router.delete('/:id', async (req, res) => {
             res.status(StatusCodes.NOT_FOUND).send(`No se encontro la entidad (id:${id}).`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
