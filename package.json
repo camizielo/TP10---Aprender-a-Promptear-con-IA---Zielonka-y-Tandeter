@@ -4,8 +4,9 @@
   "description": "Ejemplo API con acceso a PostgreSQL",
   "main": "index.js",
   "type": "module",
-  "scripts": {
-    "server": "cls && node --watch src/server.js"
+"scripts": {
+    "server": "cls && node --watch src/server.js",
+    "test": "node --test"
   },
   "author": "",
   "license": "ISC",

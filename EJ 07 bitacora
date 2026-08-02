@@ -1,0 +1,254 @@
+# 📓 Bitácora de Prompts — Ejercicio N° 07
+
+> Copiá este archivo por cada ejercicio que entregues. Nombralo, por ejemplo, `entregas/07-bitacora.md`.
+> Esta bitácora **es parte de la nota**. Un ejercicio sin bitácora no se corrige.
+
+---
+
+## Datos
+
+- **Alumno/a:** Camila Zielonka y Victoria Tandeter
+- **Ejercicio:** N° 07 — Testing
+- **Fecha:** ___
+- **Modelo de IA usado:** Claude
+
+---
+
+## 1. 🎯 Qué me pidieron
+
+Agregar tests a un proyecto que hasta ahora no tenía ninguno: tests unitarios de `calcularEdad` cubriendo casos borde reales (no solo el happy path), y al menos un test de integración de un endpoint, corriendo todo con un script `npm test`.
+
+---
+
+## 2. 💬 Mis prompts (en orden)
+
+### Prompt #1 — Lista de casos borde (sin código todavía)
+
+**Lo que escribí:**
+```
+Actuá como desarrollador backend senior especializado en testing. Pegué
+calcularEdad completa. Tarea: listar TODOS los casos borde con resultado
+esperado calculado a mano (no copiado de correr la función), cubriendo
+cumpleaños hoy, día antes/después, fecha futura, fecha inválida como
+string (investigando qué hace new Date("texto") antes de responder),
+null/undefined, y 29 de febrero. Restricción: cada caso debe evitar
+depender del día real de ejecución (fechas fijas, con mock de "hoy").
+```
+
+**Auto-chequeo de las 5 partes EFSI** (marcá lo que incluiste):
+- [x] Rol
+- [x] Contexto (¿pegaste código del proyecto?)
+- [x] Tarea
+- [x] Restricciones
+- [x] Iteración
+
+**Qué me devolvió (resumen):**
+Una tabla de 9 casos con resultado esperado y razonamiento matemático para
+cada uno (no tautológico), incluyendo la explicación de por qué
+`calcularEdad` no valida fechas futuras (da un número negativo sin avisar)
+y por qué una fecha inválida da `NaN` sin lanzar excepción. Explicó también
+un problema de timezone real que no habíamos pedido: usar strings ISO
+(`"2024-06-15"`) para fechas de test puede desalinearse un día según el
+huso horario de quien corre el test, y recomendó usar el constructor
+`new Date(año, mes, día)` en su lugar.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió como base sólida. Agregamos nosotras un décimo caso que la IA no
+había incluido: pasar un objeto `Date` ya construido como
+`fechaNacimiento`, en vez de un string — relevante porque no todo el
+código que llama a `calcularEdad` necesariamente pasa un string.
+
+### Prompt #2 — Implementación de los tests unitarios
+
+**Lo que escribí:**
+```
+Confirmo la lista con el caso 10 agregado. Escribí los tests con
+node:test, uno por caso, usando t.mock.timers.enable({apis:['Date']}) para
+fijar "hoy", y new Date(año,mes,día) para las fechas de nacimiento (no
+strings ISO). Archivo en test/fechas-helper.test.js. Agregá también el
+script "test": "node --test" en package.json.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+Paso natural de ejecución después de cerrar la lista de casos.
+
+**Qué me devolvió (resumen):**
+El archivo completo con 13 tests (los 10 casos, con el 7 dividido en
+a/b/c), usando `mock.timers` correctamente, y notas explicando por qué
+los casos de `null`/`undefined`/string vacío no necesitan mockear el
+timer (la función corta antes de tocar `Date`).
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+El código en sí sirvió tal cual. El problema apareció al guardarlo:
+tuvimos que mover el archivo dos veces (primero quedó anidado dentro de
+`src/helpers/test/`, después dentro de `src/test/`) hasta ubicarlo
+correctamente en `test/` en la raíz del proyecto, ajustando el path del
+import (`../src/helpers/fechas-helper.js`) para que coincidiera con la
+ubicación real.
+
+**Resultado final confirmado:** `npm test` corrió los 13 tests unitarios,
+todos en verde (`13 pass, 0 fail`).
+
+### Prompt #3 — Test de integración (en curso, no cerrado)
+
+**Lo que escribí:**
+```
+Necesito un test de integración con supertest de un endpoint real
+(GET /api/cursos y GET /api/cursos/999999). Pegué server.js y
+cursos-controller.js. Pedí que ajustara server.js si hacía falta separar
+la creación de app de app.listen(), para poder testear sin levantar un
+puerto real.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+Era el segundo punto pendiente del ejercicio (el primero, tests unitarios,
+ya estaba cerrado).
+
+**Qué me devolvió (resumen):**
+Propuso separar `app.js` (crea y exporta la app de Express, sin
+`.listen()`) de `server.js` (importa `app` y ahí sí llama a `.listen()`),
+patrón estándar para poder testear con `supertest` sin levantar un puerto
+real. La primera versión asumió una estructura de carpetas (`src/app.js`
+con controllers en `src/controllers/`) que coincidía en parte con la real,
+pero tuvo un error en el path del import de `auth-controller.js`
+(inconsistente entre versiones), lo que rompió el arranque del test con
+`ERR_MODULE_NOT_FOUND`. Hizo falta confirmar la estructura real de
+carpetas mirando el explorador de archivos directamente (con capturas de
+pantalla) para corregir los imports con certeza, en vez de seguir
+iterando a ciegas con la IA.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió como diseño (separar `app.js` de `server.js` es el patrón
+correcto), pero **el test de integración todavía no corre con éxito**.
+Después de corregir la estructura de imports según la organización real
+de carpetas (todo dentro de `src/`, incluyendo `auth-controller.js`), el
+test seguía fallando al momento de cerrar esta sesión. **Este punto queda
+pendiente de resolver** (ver sección 5, Verificación).
+
+---
+
+## 3. 🔧 Qué hizo la IA y qué hice yo
+
+Lo que generó la IA (usado tal cual, y confirmado funcionando):
+
+- La lista de 9 casos borde con resultado esperado calculado a mano.
+- El archivo completo `test/fechas-helper.test.js` con 13 tests, usando
+  `node:test` + `mock.timers` para fijar la fecha "de hoy" sin depender
+  del día real de ejecución.
+- El diseño de separar `app.js` de `server.js` para permitir testing con
+  `supertest` sin levantar un puerto real.
+- El archivo `test/cursos-controller.test.js` con los 2 casos de
+  integración (200 + array, 404 con id inexistente).
+
+Lo que hicimos nosotras:
+
+- Agregar el caso borde n.º 10 (objeto `Date` ya construido en vez de
+  string) que la IA no había incluido en su lista inicial — este es el
+  caso que la consigna pide explícitamente documentar en la reflexión.
+- Detectar y corregir, en dos rondas, la ubicación incorrecta del archivo
+  de test (`src/helpers/test/` → `src/test/` → `test/` en la raíz),
+  ajustando el path del import cada vez.
+- Correr `npm test` y confirmar los 13 tests unitarios en verde.
+- Instalar `supertest` como devDependency.
+- Confirmar, mirando directamente el explorador de archivos de VS Code
+  (con capturas), la estructura real de carpetas del proyecto, para
+  poder corregir con certeza los imports de `app.js`/`server.js`/
+  `cursos-controller.test.js`, en vez de seguir adivinando con la IA sin
+  contexto visual real.
+
+---
+
+## 4. 🐛 Errores o cosas mal que detecté en la respuesta de la IA
+
+El error más relevante de este ejercicio no fue en la lógica de los
+tests (que fue correcta desde el principio), sino en un problema de
+contexto perdido entre turnos: al pedir el test de integración, la IA
+asumió una estructura de carpetas para `app.js`/`server.js` que no
+coincidía exactamente con la real, y esa discrepancia rompió el `import`
+de `auth-controller.js` de forma sutil (`ERR_MODULE_NOT_FOUND` con una
+ruta duplicada). La IA reconoció honestamente el error cuando se lo
+señalamos, pero su primera hipótesis de corrección (asumir que el
+proyecto NO tenía carpeta `src/`) también resultó incorrecta — recién
+cuando confirmamos la estructura real mirando el explorador de archivos
+de VS Code pudimos ajustar los imports con certeza.
+
+Esto refuerza algo que ya veníamos notando en ejercicios anteriores:
+cuando un prompt depende de la estructura exacta de carpetas del
+proyecto, describírsela de palabra a la IA es más propenso a error que
+mostrarle el árbol de archivos real o confirmarlo explícitamente antes de
+aceptar una corrección.
+
+Un segundo punto, más de proceso que de la IA en sí: **todavía no
+verificamos el caso obligatorio de "romper la función a propósito"**
+(cambiar `edad--` por `edad++` y confirmar que los tests se ponen rojos).
+Esto queda como pendiente inmediato antes de la entrega final — sin esa
+verificación, no podemos confirmar con evidencia real que los tests
+efectivamente prueban algo y no son tautológicos.
+
+---
+
+## 5. ✅ Verificación
+
+```
+[x] npm test corre y los 13 tests de calcularEdad pasan.
+    Evidencia: salida real de terminal, "tests 13, pass 13, fail 0".
+
+[ ] Hay un test que falla si rompés calcularEdad a propósito (cambiar
+    edad-- por edad++ y confirmar que se pone rojo).
+    Evidencia: PENDIENTE — no se llegó a ejecutar esta verificación antes
+    de continuar con el resto de los ejercicios. Hacer esto ANTES de dar
+    por cerrado el ejercicio.
+
+[x] Hay un caso para fecha inválida (Caso 5) y uno para null (Caso 6a) y
+    undefined (Caso 6b).
+    Evidencia: revisión del archivo de test, los 3 casos están presentes
+    y pasan.
+
+[x] El test de fecha no depende del día en que se corre.
+    Evidencia: todos los casos que dependen de "hoy" usan
+    t.mock.timers.enable() con una fecha fija, no new Date() real.
+
+[ ] El test de integración verifica el status code además del body.
+    Evidencia: PENDIENTE — el archivo test/cursos-controller.test.js está
+    escrito (verifica status 200 + array, y 404), pero al momento de
+    cerrar esta sesión seguía fallando por un problema de resolución de
+    módulos (imports). Falta: confirmar que corre en verde después de la
+    corrección de estructura de carpetas más reciente.
+
+[ ] Entendés la diferencia entre el test unitario y el de integración y
+    podés explicarla.
+    Evidencia: comentario en la cabecera de cursos-controller.test.js
+    aclarando que es de integración (requiere Postgres real, no mockeado).
+    Falta confirmar que el test efectivamente corre para poder decir que
+    se entiende en la práctica, no solo en la teoría.
+```
+
+> ⚠️ **Pendientes antes de la entrega final de este ejercicio:**
+> 1. Correr `npm test` después de guardar `src/app.js`, `src/server.js` y
+>    `test/cursos-controller.test.js` con los paths corregidos según la
+>    estructura real de carpetas (confirmada por captura de pantalla:
+>    todo dentro de `src/`, incluyendo `auth-controller.js`).
+> 2. Si sigue fallando, revisar el mensaje de error completo (no solo
+>    "test failed") — probablemente indique la línea y el módulo exacto
+>    que no se resuelve.
+> 3. Hacer la prueba de mutación: cambiar `edad--` por `edad++` en
+>    `calcularEdad`, correr `npm test`, confirmar que varios tests se
+>    ponen rojos, y volver el código a su estado original.
+
+---
+
+## 6. ✍️ Reflexión (300–600 palabras)
+
+*(Completar una vez resueltos los pendientes de la sección 5 — la reflexión debe incluir, tal como pide la consigna, un caso borde que ustedes pensaron y la IA no había incluido en su lista inicial: el caso 10, pasar un objeto `Date` ya construido en vez de un string como `fechaNacimiento`. También conviene incluir qué pasó al intentar hacer correr el test de integración y cómo se resolvió, una vez resuelto.)*
+
+```
+...
+```
+
+---
+
+## 7. 🔗 Adjuntos
+
+- [ ] Link/PDF de la conversación completa con la IA
+- [ ] Commit(s) en GitHub: `____________`
+- [ ] Capturas / evidencias de verificación (salida de npm test, prueba de mutación)
