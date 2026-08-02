@@ -1,0 +1,202 @@
+# 📓 Bitácora de Prompts — Ejercicio N° 06
+
+> Copiá este archivo por cada ejercicio que entregues. Nombralo, por ejemplo, `entregas/06-bitacora.md`.
+> Esta bitácora **es parte de la nota**. Un ejercicio sin bitácora no se corrige.
+
+---
+
+## Datos
+
+- **Alumno/a:** Camila Zielonka y Victoria Tandeter
+- **Ejercicio:** N° 06 — Arquitectura de la aplicación
+- **Fecha:** ___
+- **Modelo de IA usado:** Claude
+
+---
+
+## 1. 🎯 Qué me pidieron
+
+Usar la IA como consultor de arquitectura (no como generador de código) para analizar críticamente el diseño en capas del proyecto, detectar 3 a 5 problemas o decisiones discutibles reales (no genéricos), y de esos elegir e implementar uno solo, de forma acotada y justificada.
+
+---
+
+## 2. 💬 Mis prompts (en orden)
+
+### Prompt #1 — Auditoría crítica de arquitectura
+
+**Lo que escribí:**
+```
+Actuá como un arquitecto de software revisando un proyecto educativo.
+Pegué el documento de referencia completo del proyecto
+(server-capas-explicacion.md). Tarea: asumir que hay al menos 3 problemas
+de diseño y encontrarlos, con problema concreto, impacto real, y
+recomendación con trade-off explícito para cada uno. Señalé 3 puntos
+específicos que el documento NO resuelve (a diferencia del manejo de
+errores silenciado, que sí justifica): CursosService como pass-through,
+un Pool por repository en vez de uno compartido, y console.log fuera del
+control de LogHelper. Restricciones: recomendaciones proporcionales al
+tamaño del proyecto (nada de Clean Architecture/DDD/CQRS sin justificar
+con un bug concreto), sin código todavía, y sin repetir como "hallazgo"
+algo que el documento ya justifica explícitamente.
+```
+
+**Auto-chequeo de las 5 partes EFSI** (marcá lo que incluiste):
+- [x] Rol
+- [x] Contexto (¿pegaste código del proyecto?)
+- [x] Tarea
+- [x] Restricciones
+- [x] Iteración
+
+**Qué me devolvió (resumen):**
+Un análisis de 3 hallazgos pedidos más 1 adicional no solicitado. El más
+sólido: los Pools duplicados, con un número concreto (4 Pools para 3
+entidades, trazando la cadena real de instanciación) y contradiciendo
+explícitamente la afirmación del propio documento de que `DbPg` es
+compartido. Para `CursosService` pass-through, propuso un comentario
+explicativo como mitigación, reconociendo honestamente que "no es una
+garantía real, solo documentación". Para los `console.log`, propuso un
+método `logDebug` en `LogHelper`, pero admitió que el volumen de cambio
+(tocar cada archivo) podría no justificarse todavía. Agregó, sin que se
+lo pidiéramos, un hallazgo sobre los GET exponiendo datos personales sin
+autenticación.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+El análisis en sí sirvió tal cual — no hizo falta repreguntar nada, porque
+ya venía con trade-offs explícitos y ejemplos concretos, tal como pedía la
+restricción. Lo que sí hicimos fue una revisión crítica propia de las 3
+recomendaciones antes de aceptar cuál implementar (ver punto 4).
+
+### Prompt #2 — Implementación acotada del hallazgo elegido
+
+**Lo que escribí:**
+```
+Vamos con el Hallazgo 2 (Pools duplicados). Contexto: gracias al refactor
+por herencia del ejercicio 02, los 3 repositories ya no instancian Db
+directamente, todos extends BaseRepository. Pegué base-repository.js y
+db-pg.js completos. Tarea: convertir db-pg.js al patrón singleton (export
+default new Db(), igual que LogHelper), y actualizar base-repository.js
+para importar esa instancia en vez de crear una nueva. Restricciones: no
+cambiar la interfaz pública de DbPg, mantener el lazy-init del Pool, no
+tocar ningún repository individual.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+Era el paso de ejecución después de elegir, entre las 3 opciones del
+diagnóstico, cuál implementar — no fue una corrección del prompt anterior.
+
+**Qué me devolvió (resumen):**
+`db-pg.js` con `export default new DbPg()`, y `base-repository.js`
+importando `db` directamente (`this.db = db`) en vez de instanciar la
+clase. Confirmó, revisando la cadena de herencia, que ningún repository
+concreto necesitaba cambios, ya que todos heredan `this.db` de
+`BaseRepository` sin instanciar `Db` por su cuenta.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió tal cual — el cambio quedó acotado exactamente a los 2 archivos
+esperados, sin tocar nada más, y la interfaz pública (`queryAll`,
+`queryOne`, `queryReturnId`, `queryRowCount`) no cambió.
+
+---
+
+## 3. 🔧 Qué hizo la IA y qué hice yo
+
+Lo que generó la IA:
+
+- El análisis crítico completo de arquitectura (4 hallazgos: 3 pedidos +
+  1 adicional), cada uno con problema concreto, impacto medible cuando
+  fue posible, y recomendación con trade-off.
+- La implementación del singleton de `DbPg`: los 2 archivos completos
+  (`db-pg.js`, `base-repository.js`).
+
+Lo que hicimos nosotras:
+
+- Elegir, de los 3 hallazgos analizados, cuál implementar (Pools
+  duplicados), justificando por qué era el de mayor impacto medible y
+  menor costo de implementación.
+- Decidir explícitamente NO implementar las otras dos recomendaciones
+  (el comentario para `CursosService`, el `logDebug` para los
+  `console.log`), con una justificación propia distinta a la que dio la
+  IA en el caso del comentario (consideramos que ni siquiera el comentario
+  aporta valor real, más allá de que la propia IA ya reconocía sus
+  límites).
+- Redactar el documento de análisis (`06-analisis-arquitectura.md`) como
+  entregable, sintetizando el intercambio con la IA en un formato propio,
+  no como una transcripción literal.
+- Verificar en Postman que los 3 CRUDs siguieran funcionando exactamente
+  igual después del cambio en `db-pg.js`/`base-repository.js`.
+
+---
+
+## 4. 🐛 Errores o cosas mal que detecté en la respuesta de la IA
+
+No encontramos errores de código en la implementación del singleton —
+el cambio fue correcto en el primer intento y no rompió ningún endpoint
+al probarlo.
+
+Donde sí discrepamos fue en una recomendación de diseño, no en un error
+técnico: para el hallazgo de `CursosService` como pass-through, la IA
+propuso agregar un comentario explicativo como mitigación del riesgo de
+que alguien rompa la separación de capas en el futuro. Aunque la propia
+IA reconoció honestamente que "no es una garantía real, solo
+documentación", igual lo dejó como su recomendación final. Decidimos ir
+un paso más allá de esa autocrítica: no implementamos ni siquiera el
+comentario, porque consideramos que si una mitigación no protege nada de
+verdad, agregarla igual puede dar una falsa sensación de "problema
+resuelto" — preferimos dejar el problema explícitamente abierto y
+documentado en el análisis, en vez de taparlo con algo cosmético.
+
+---
+
+## 5. ✅ Verificación
+
+```
+[x] El documento describe el flujo real de una request (verificable
+    contra el código).
+    Evidencia: 06-analisis-arquitectura.md, sección 1, con el flujo de
+    GET /:id y DELETE /:id trazado contra los archivos reales del
+    proyecto (incluyendo middlewares de los ejercicios 04 y 05).
+
+[x] Cada problema detectado existe de verdad en el código (no es
+    genérico de "cualquier proyecto Node").
+    Evidencia: el Hallazgo 1 incluye la cadena real de instanciación con
+    un número concreto (4 Pools), verificable leyendo los constructores
+    de los 3 repositories y sus services.
+
+[x] Cada recomendación tiene un trade-off explícito (no solo ventajas).
+    Evidencia: los 3 hallazgos en el documento incluyen qué se gana y qué
+    se pierde con cada recomendación, incluyendo por qué se descartaron
+    dos de ellas.
+
+[x] El cambio implementado no rompe los endpoints existentes.
+    Evidencia: se volvieron a probar los CRUDs de alumnos, cursos y
+    materias en Postman después del cambio, incluyendo el caso de
+    validarCursoExiste (que depende de CursosService).
+
+[x] No se metió sobre-ingeniería: cada pieza nueva se justifica por un
+    problema concreto.
+    Evidencia: el cambio implementado son 2 archivos modificados, sin
+    dependencias nuevas ni patrones no usados ya en el proyecto (reutiliza
+    el mismo patrón singleton de LogHelper).
+```
+
+---
+
+## 6. ✍️ Reflexión (300–600 palabras)
+
+Este ejercicio fue distinto a los anteriores porque el entregable principal no era código, sino un documento de análisis — y eso cambió la forma de usar la IA: en vez de pedirle que generara algo, le pedimos que evaluara críticamente lo que ya existía. La instrucción más importante que incluimos en el prompt fue pedirle explícitamente que asumiera que había al menos 3 problemas y los encontrara, en vez de preguntar abiertamente "¿está bien la arquitectura?" — la consigna advierte que la IA tiende a ser aduladora, y confirmamos que forzar una postura crítica desde el prompt evita ese problema.
+
+Lo más interesante del análisis fue que la IA no se limitó a repetir lo que ya decía la documentación del proyecto, sino que la contradijo con evidencia concreta: el documento afirma que `DbPg` es "la maquinaria que todos comparten", pero trazando la cadena real de instanciación de las 3 entidades, terminábamos con 4 Pools distintos en vez de uno solo. Ese número concreto —no una afirmación genérica de "esto podría optimizarse"— fue lo que nos convenció de que era el hallazgo de mayor impacto real, y el que elegimos implementar.
+
+La decisión más importante que tomamos nosotras, no la IA, fue rechazar la recomendación de mitigación para el segundo hallazgo (`CursosService` como pass-through). La IA propuso agregar un comentario explicando por qué `AlumnosService` usa `CursosService` y no `CursosRepository` directamente, pero reconoció ella misma que un comentario "no es una garantía real, solo documentación". En vez de aceptar esa recomendación tibia, decidimos no implementar nada ahí: si una mitigación no resuelve el problema de verdad, preferimos dejarlo documentado como una limitación abierta en el análisis, en vez de agregar código que da una falsa sensación de que el problema ya está resuelto. Esto nos parece un ejemplo concreto de pensamiento crítico más allá de lo que la propia IA sugirió — no alcanza con detectar que la recomendación de la IA es floja, hay que decidir qué hacer con esa información.
+
+También decidimos no implementar la tercera recomendación (el `logDebug` para unificar los `console.log` bajo el control de `LogHelper`), aunque el diagnóstico del problema nos pareció correcto: el flag `LOG_TO_CONSOLE_ENABLED` efectivamente no controla los logs de debug esparcidos por el código, y eso podría sorprender a alguien que intente silenciarlos en producción. Pero el costo de implementarlo (tocar cada controller, service y repository) nos pareció desproporcionado frente a un problema que hoy es más de higiene que de corrección funcional. Documentar por qué NO implementamos algo nos resultó tan importante como documentar lo que sí hicimos — la consigna lo pide explícitamente, y tiene sentido: elegir no hacer algo, con una razón, es tan parte del criterio de arquitectura como elegir hacerlo.
+
+Lo que más aprendimos es que un buen análisis de arquitectura no termina en "encontrar problemas", sino en decidir con cuáles vale la pena actuar ahora y con cuáles no, según el tamaño real del proyecto — y que estar en desacuerdo con una recomendación de la IA, incluso cuando ella misma admite sus limitaciones, sigue siendo una decisión que hay que tomar y justificar nosotras, no delegarle.
+
+---
+
+## 7. 🔗 Adjuntos
+
+- [ ] Link/PDF de la conversación completa con la IA
+- [ ] Commit(s) en GitHub: `____________`
+- [ ] Capturas / evidencias de verificación (CRUDs de las 3 entidades post-cambio)

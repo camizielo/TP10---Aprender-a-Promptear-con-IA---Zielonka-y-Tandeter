@@ -4,7 +4,7 @@ import LogHelper from './../helpers/log-helper.js'
 
 const { Pool } = pkg;
 
-export default class DbPg {
+class DbPg {
     constructor() {
         this.DBPool = null;
     }
@@ -70,3 +70,5 @@ export default class DbPg {
         return rowsAffected;
     }
 }
+
+export default new DbPg();

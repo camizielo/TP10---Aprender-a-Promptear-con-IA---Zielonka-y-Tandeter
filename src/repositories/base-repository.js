@@ -1,10 +1,10 @@
-import Db from './db-pg.js';
+import db from './db-pg.js';
 
 export default class BaseRepository {
     constructor(tabla) {
         console.log(`Estoy en: BaseRepository.constructor(${tabla})`);
         this.tabla = tabla;
-        this.db = new Db();
+        this.db = db;
     }
 
     getAllAsync = async () => {
