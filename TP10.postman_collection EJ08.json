@@ -1,0 +1,285 @@
+{
+  "info": {
+    "_postman_id": "7d4f2a80-3e9c-4a1b-8f6d-ejercicio08000",
+    "name": "TP10 - Ejercicio 08 - Paginacion",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Casos normales",
+      "item": [
+        {
+          "name": "GET alumnos - sin query params (defaults page=1 limit=20)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/alumnos",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "alumnos"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET alumnos - page=2&limit=10",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/alumnos?page=2&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "alumnos"],
+              "query": [
+                { "key": "page", "value": "2" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET alumnos - ultima pagina (page=507)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/alumnos?page=507&limit=20",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "alumnos"],
+              "query": [
+                { "key": "page", "value": "507" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Casos raros (deben sanitizarse, no romper)",
+      "item": [
+        {
+          "name": "GET alumnos - page=0 (debe tratarse como page=1)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/alumnos?page=0&limit=20",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "alumnos"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET alumnos - page=-3 negativo (debe tratarse como page=1)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/alumnos?page=-3&limit=20",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "alumnos"],
+              "query": [
+                { "key": "page", "value": "-3" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET alumnos - limit=-5 negativo (debe ajustarse al tope segun diseno)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/alumnos?page=1&limit=-5",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "alumnos"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "-5" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET alumnos - limit=0 (debe ajustarse al tope)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/alumnos?page=1&limit=0",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "alumnos"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "0" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET alumnos - limit=99999 excesivo (debe recortarse a 100)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/alumnos?page=1&limit=99999",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "alumnos"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "99999" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET alumnos - page=texto no numerico (no debe romper el server)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/alumnos?page=abc&limit=20",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "alumnos"],
+              "query": [
+                { "key": "page", "value": "abc" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET alumnos - page muy alto, mas alla del total (debe dar data vacia, no error)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/alumnos?page=99999&limit=20",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "alumnos"],
+              "query": [
+                { "key": "page", "value": "99999" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Verificacion del JOIN (nombre_curso)",
+      "item": [
+        {
+          "name": "GET alumnos - confirmar que cada item trae nombre_curso",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/alumnos?page=1&limit=5",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "alumnos"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cursos y Materias (misma paginacion heredada)",
+      "item": [
+        {
+          "name": "GET cursos con paginacion",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/cursos?page=1&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "cursos"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET materias con paginacion (verificar tabla correcta tras el fix)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/materias?page=1&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "materias"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

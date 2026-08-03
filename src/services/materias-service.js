@@ -6,10 +6,10 @@ export default class MateriasService {
         this.MateriasRepository = new MateriasRepository();
     }
 
-    getAllAsync = async () => {
-        console.log(`MateriasService.getAllAsync()`);
-        const returnArray = await this.MateriasRepository.getAllAsync();
-        return returnArray;
+    getAllAsync = async (page, limit) => {
+        console.log(`MateriasService.getAllAsync(page=${page}, limit=${limit})`);
+        const resultado = await this.MateriasRepository.getAllAsync(page, limit);
+        return resultado;
     }
 
     getByIdAsync = async (id) => {

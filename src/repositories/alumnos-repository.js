@@ -1,10 +1,68 @@
-
 import BaseRepository from './base-repository.js';
+
+// Se duplican estas dos funciones de sanitización acá porque viven como
+// funciones privadas (no exportadas) dentro de base-repository.js, y la
+// restricción de esta tarea es no tocar ese archivo. Si en el futuro más
+// repositories necesitan sobreescribir getAllAsync con su propio JOIN,
+// convendría exportarlas desde base-repository.js para no seguir
+// duplicando esta lógica en cada uno.
+const LIMITE_POR_DEFECTO = 20;
+const LIMITE_MAXIMO = 100;
+
+function sanitizarPagina(page) {
+    const numero = Number(page);
+    if (!Number.isInteger(numero) || numero < 1) {
+        return 1;
+    }
+    return numero;
+}
+
+function sanitizarLimite(limit) {
+    if (limit === undefined || limit === null || limit === '') {
+        return LIMITE_POR_DEFECTO;
+    }
+    const numero = Number(limit);
+    if (!Number.isInteger(numero) || numero <= 0 || numero > LIMITE_MAXIMO) {
+        return LIMITE_MAXIMO;
+    }
+    return numero;
+}
 
 export default class AlumnosRepository extends BaseRepository {
     constructor() {
         super('alumnos');
         console.log('Estoy en: AlumnosRepository-new.constructor()');
+    }
+
+    getAllAsync = async (page, limit) => {
+        const paginaSanitizada = sanitizarPagina(page);
+        const limiteSanitizado = sanitizarLimite(limit);
+        const offset = (paginaSanitizada - 1) * limiteSanitizado;
+
+        console.log(`AlumnosRepository-new.getAllAsync(page=${paginaSanitizada}, limit=${limiteSanitizado})`);
+
+        const sqlDatos = `SELECT alumnos.*, cursos.nombre AS nombre_curso
+                           FROM alumnos
+                           LEFT JOIN cursos ON alumnos.id_curso = cursos.id
+                           LIMIT $1 OFFSET $2`;
+        const sqlTotal = `SELECT COUNT(*) AS total FROM alumnos`;
+
+        const [datos, resultadoTotal] = await Promise.all([
+            this.db.queryAll(sqlDatos, [limiteSanitizado, offset]),
+            this.db.queryOne(sqlTotal)
+        ]);
+
+        if (datos == null) return null;
+
+        const total = resultadoTotal ? parseInt(resultadoTotal.total, 10) : 0;
+
+        return {
+            data: datos,
+            page: paginaSanitizada,
+            limit: limiteSanitizado,
+            total,
+            totalPages: Math.ceil(total / limiteSanitizado)
+        };
     }
 
     createAsync = async (entity) => {

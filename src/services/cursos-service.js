@@ -6,10 +6,10 @@ export default class CursosService {
         this.CursosRepository = new CursosRepository();
     }
 
-    getAllAsync = async () => {
-        console.log(`CursosService.getAllAsync()`);
-        const returnArray = await this.CursosRepository.getAllAsync();
-        return returnArray;
+    getAllAsync = async (page, limit) => {
+        console.log(`CursosService.getAllAsync(page=${page}, limit=${limit})`);
+        const resultado = await this.CursosRepository.getAllAsync(page, limit);
+        return resultado;
     }
 
     getByIdAsync = async (id) => {
@@ -29,11 +29,10 @@ export default class CursosService {
         const rowsAffected = await this.CursosRepository.updateAsync(entity);
         return rowsAffected;
     }
-    
+
     deleteByIdAsync = async (id) => {
         console.log(`CursosService.deleteByIdAsync(${id})`);
         const rowsAffected = await this.CursosRepository.deleteByIdAsync(id);
         return rowsAffected;
     }
 }
-

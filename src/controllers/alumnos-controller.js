@@ -11,10 +11,6 @@ import verificarToken from './../middlewares/verificar-token-middleware.js';
 const router = Router();
 const currentService = new AlumnosService();
 
-// Endpoint de ejemplo: crear un alumno desde código usando la clase Alumno
-// En vez de recibir los datos del body (req.body), los armamos nosotros desde código.
-// Para eso usamos la clase Alumno de la carpeta entities.
-// Probar con: GET http://localhost:3000/api/alumnos/test-insert
 router.get('/test-insert', async (req, res) => {
     console.log('/test-insert');
     try {
@@ -41,9 +37,11 @@ router.get('/test-insert', async (req, res) => {
 router.get('', async (req, res) => {
     try {
         console.log(`AlumnosController.get`);
-        const returnArray = await currentService.getAllAsync();
-        if (returnArray != null){
-            res.status(StatusCodes.OK).json(returnArray);
+        const page = req.query.page !== undefined ? parseInt(req.query.page) : undefined;
+        const limit = req.query.limit !== undefined ? parseInt(req.query.limit) : undefined;
+        const resultado = await currentService.getAllAsync(page, limit);
+        if (resultado != null){
+            res.status(StatusCodes.OK).json(resultado);
         } else {
             res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error interno.`);
         }

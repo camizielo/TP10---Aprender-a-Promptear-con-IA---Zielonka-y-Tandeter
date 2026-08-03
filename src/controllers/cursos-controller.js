@@ -12,9 +12,11 @@ const currentService = new CursosService();
 router.get('', async (req, res) => {
     try {
         console.log(`CursosController.get`);
-        const returnArray = await currentService.getAllAsync();
-        if (returnArray != null){
-            res.status(StatusCodes.OK).json(returnArray);
+        const page = req.query.page !== undefined ? parseInt(req.query.page) : undefined;
+        const limit = req.query.limit !== undefined ? parseInt(req.query.limit) : undefined;
+        const resultado = await currentService.getAllAsync(page, limit);
+        if (resultado != null){
+            res.status(StatusCodes.OK).json(resultado);
         } else {
             res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error interno.`);
         }

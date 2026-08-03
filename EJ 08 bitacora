@@ -1,0 +1,288 @@
+# 📓 Bitácora de Prompts — Ejercicio N° 08
+
+> Copiá este archivo por cada ejercicio que entregues. Nombralo, por ejemplo, `entregas/08-bitacora.md`.
+> Esta bitácora **es parte de la nota**. Un ejercicio sin bitácora no se corrige.
+
+---
+
+## Datos
+
+- **Alumno/a:** Camila Zielonka y Victoria Tandeter
+- **Ejercicio:** N° 08 — Performance y optimización
+- **Fecha:** ___
+- **Modelo de IA usado:** Claude
+
+---
+
+## 1. 🎯 Qué me pidieron
+
+Medir el rendimiento real de un endpoint antes de optimizar (no adivinar), identificar 2-3 mejoras reales de performance priorizadas por impacto, implementar paginación obligatoria en el listado, y al menos una optimización más, descartando explícitamente las que no valen la pena a la escala de este proyecto.
+
+---
+
+## 2. 💬 Mis prompts (en orden)
+
+### Prompt #1 — Auditoría priorizada de performance
+
+**Lo que escribí:**
+```
+Actuá como ingeniero de performance backend. Pegué alumnos-repository.js,
+alumnos-service.js y cursos-repository.js. Tarea: analizar problemas de
+performance que se noten con MUCHOS datos (miles de filas), priorizados
+por impacto real y por cuándo empiezan a notarse (100? 10.000? 100.000
+filas?). Señalé 4 puntos concretos: getAllAsync sin LIMIT/OFFSET,
+updateAsync con 2 queries (SELECT+UPDATE), el N+1 hipotético si quisiera
+traer el nombre del curso, y SELECT * vs columnas explícitas.
+Restricción: descartar explícitamente micro-optimizaciones que no valen
+la pena a esta escala, sin código todavía.
+```
+
+**Auto-chequeo de las 5 partes EFSI** (marcá lo que incluiste):
+- [x] Rol
+- [x] Contexto (¿pegaste código del proyecto?)
+- [x] Tarea
+- [x] Restricciones
+- [x] Iteración
+
+**Qué me devolvió (resumen):**
+Priorizó correctamente la falta de paginación como el problema #1, con el
+argumento clave de que es el único que "no tiene techo natural" (crece
+con cada fila insertada, para siempre), a diferencia de los otros 3 que
+tienen un costo fijo. Para el N+1 hipotético del nombre del curso, explicó
+la diferencia entre la versión ingenua (loop de queries) y la correcta
+(JOIN), y recomendó diseñarlo bien desde el principio si se implementa.
+Para el doble query de `updateAsync`, argumentó correctamente que NO es
+un problema de escala (es O(1) respecto al tamaño de la tabla, solo un
+roundtrip extra fijo de pocos ms) y lo descartó. Para `SELECT *`, lo
+descartó también, señalando que sin columnas pesadas (BYTEA/TEXT largos)
+la diferencia es despreciable, y que de hecho `SELECT *` da más
+flexibilidad de mantenimiento.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió tal cual — la priorización coincidía con nuestra propia intuición,
+así que avanzamos directo a medir antes de tocar código.
+
+### Prompt #2 — Script de datos de prueba + medición del "antes"
+
+**Lo que escribí:**
+```
+Ayudame con un script que inserte 10.000 alumnos de prueba reutilizando
+el mismo Pool singleton (sin abrir conexiones nuevas), en lotes (INSERTs
+con múltiples VALUES) para no tardar una eternidad, y con la forma más
+simple de medir el tiempo de un endpoint (curl -w, sin agregar
+herramientas nuevas). Restricción: avisarme cómo borrar los datos de
+prueba después sin tocar datos reales.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+Paso obligatorio de la consigna: medir antes de optimizar, no solo
+diseñar. No fue una corrección del anterior.
+
+**Qué me devolvió (resumen):**
+Un script `test-data/seed-alumnos.js` que inserta 10.000 alumnos en 20
+lotes de 500 (un único `INSERT` con múltiples `VALUES` por lote, evitando
+10.000 roundtrips), marcando todos con un apellido único
+(`SeedDataPerformanceTest`) para poder borrarlos después con un `DELETE`
+seguro. Recomendó `curl -s -o /dev/null -w "%{time_total}s"` como la forma
+más simple de medir, sin agregar dependencias.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+El script en sí sirvió tal cual (buena decisión de la IA: usar
+`pool.query()` directo en vez de los métodos de `DbPg` que atrapan
+errores, para que el seed se corte visiblemente si algo sale mal). Pero
+tuvimos que resolver 2 problemas propios al correrlo: faltaba cargar
+`dotenv/config` como primera línea del script (el `.env` nunca se carga
+automáticamente fuera de `app.js`), y un bug preexistente no relacionado
+(`materias-repository.js` resultó ser una copia sin adaptar de
+`cursos-repository.js` — usaba la tabla `cursos` en vez de `materias`),
+que detectamos por los logs del constructor al reiniciar el server y
+tuvimos que corregir antes de poder confiar en las mediciones.
+
+**Medición "antes" confirmada:** `GET /api/alumnos` sin paginación, con
+10.135 alumnos en la tabla → **2.25163 segundos**.
+
+### Prompt #3 — Implementación de la paginación (BaseRepository)
+
+**Lo que escribí:**
+```
+Implementá paginación en BaseRepository.getAllAsync (page, limit vía
+query string), con LIMIT/OFFSET parametrizados ($1/$2, nunca
+concatenados), defaults sensatos (page=1, limit=20), sanitización de
+casos raros (page<=0 → 1; limit<=0 o >100 → tope de 100), cambio de
+contrato de respuesta a {data, page, limit, total, totalPages}
+(confirmándolo explícitamente como breaking change), y el COUNT(*) en
+paralelo con Promise.all. Actualizar los 3 controllers para leer
+page/limit del query string.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+Era la implementación del punto obligatorio de la consigna, después de
+tener el número "antes" medido.
+
+**Qué me devolvió (resumen):**
+`base-repository.js` con `getAllAsync(page, limit)` sanitizando ambos
+parámetros, `LIMIT $1 OFFSET $2` parametrizado, y el `total`/`totalPages`
+calculados con un `COUNT(*)` corrido en paralelo vía `Promise.all` (no
+secuencial). Actualizó los 3 services y los 3 controllers para propagar
+`page`/`limit` desde `req.query`. Confirmó explícitamente, antes de dar el
+código, que esto es un cambio de contrato (rompe cualquier cliente que
+esperara un array pelado).
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió tal cual una vez resuelto un problema de nuestro propio proyecto:
+faltaba el archivo `src/helpers/app-error.js` (se había perdido/no
+guardado en algún punto), lo que rompía el arranque del server con
+`ERR_MODULE_NOT_FOUND` al reiniciar con el código nuevo. Lo recreamos
+manualmente y el server arrancó sin problema.
+
+### Prompt #4 — Segunda optimización real: JOIN para evitar el N+1
+
+**Lo que escribí:**
+```
+Implementá el Hallazgo 2 preventivamente: sobreescribir getAllAsync en
+AlumnosRepository (no tocar BaseRepository) con un LEFT JOIN a cursos
+para traer nombre_curso junto con cada alumno, manteniendo la misma
+paginación y el mismo contrato {data, page, limit, total, totalPages}.
+```
+
+**Por qué necesité este segundo prompt** (qué falló o faltó en el anterior):
+Era la "otra optimización" obligatoria del punto 4 de la consigna, ya que
+las otras dos candidatas (doble query en updateAsync, SELECT *) las
+descartamos con justificación en el Prompt #1.
+
+**Qué me devolvió (resumen):**
+`AlumnosRepository.getAllAsync` sobreescrito con
+`LEFT JOIN cursos ON alumnos.id_curso = cursos.id`, manteniendo
+`LIMIT $1 OFFSET $2` y el `COUNT(*)` sobre `alumnos` (no sobre el join,
+ya que el total de alumnos no cambia por el join). Usó `LEFT JOIN` (no
+`INNER JOIN`) deliberadamente, para no hacer desaparecer alumnos con
+`id_curso` inválido o `null` del listado. Tuvo que duplicar las funciones
+de sanitización de `page`/`limit` dentro de `alumnos-repository.js`
+(porque no podía tocar `base-repository.js` por restricción), dejando
+anotado que si más entidades necesitan lo mismo convendría exportarlas
+desde `base-repository.js` en vez de seguir duplicando.
+
+**¿Me sirvió tal cual, o tuve que corregir/repreguntar?**
+Sirvió tal cual. Confirmado en Postman/curl que la respuesta trae
+`nombre_curso` en cada alumno sin romper el contrato de paginación.
+
+---
+
+## 3. 🔧 Qué hizo la IA y qué hice yo
+
+Lo que generó la IA:
+
+- El análisis priorizado de 4 problemas de performance, con criterio
+  claro de escala (técnicas de "cuándo empieza a doler").
+- El script de seed de 10.000 alumnos en lotes.
+- La implementación completa de paginación en `BaseRepository` (heredada
+  por las 3 entidades).
+- La sobreescritura de `getAllAsync` en `AlumnosRepository` con el JOIN.
+
+Lo que hicimos nosotras:
+
+- Ejecutar el seed, medir el "antes" real con `curl -w`, y confirmar el
+  número (2.25163s) antes de tocar cualquier código de paginación.
+- Detectar y corregir 2 bugs propios del proyecto, no generados por este
+  ejercicio, que aparecieron en el camino: `dotenv` no cargado en el
+  script de seed, y `materias-repository.js` siendo una copia sin
+  adaptar de `cursos-repository.js` (usando la tabla equivocada) —
+  detectado por los logs del constructor al reiniciar el server.
+- Recrear `app-error.js`, que se había perdido/no guardado, y que
+  rompía el arranque del server con el código de paginación ya escrito.
+- Medir el "después" (con `limit=20`) y calcular la mejora real
+  (~58x más rápido).
+- Confirmar en `curl` que el contrato de respuesta y el campo
+  `nombre_curso` funcionan como se esperaba.
+
+---
+
+## 4. 🐛 Errores o cosas mal que detecté en la respuesta de la IA
+
+No encontramos errores en el código de performance en sí (la paginación
+y el JOIN funcionaron correctamente en el primer intento, una vez
+resueltos los problemas de nuestro propio entorno).
+
+Los dos hallazgos más importantes de este ejercicio fueron bugs
+preexistentes en nuestro propio proyecto, no generados por la IA en este
+ejercicio puntual, pero que solo salieron a la luz al intentar correr el
+script de seed y medir:
+
+1. **`materias-repository.js` resultó ser una copia sin adaptar de
+   `cursos-repository.js`** — la clase se llamaba `CursosRepository`,
+   hacía `super('cursos')`, y el SQL apuntaba a la tabla `cursos`. Esto
+   significa que, desde que existe esta entidad (ejercicio 01), cualquier
+   operación sobre `/api/materias` estuvo en realidad afectando la tabla
+   `cursos`. Lo detectamos por los logs del constructor
+   (`BaseRepository.constructor(cursos)` apareciendo dentro de
+   `MateriasService`), no por un error explícito, y lo corregimos
+   reescribiendo el archivo completo con el nombre de tabla correcto.
+   Este hallazgo queda anotado también para revisar la bitácora del
+   ejercicio 01.
+
+2. **`app-error.js` se había perdido** en algún punto entre ejercicios
+   anteriores (probablemente nunca se guardó correctamente), lo que
+   rompía el arranque del server recién al reiniciar con el código nuevo
+   de paginación. Lo recreamos manualmente con el contenido que ya
+   conocíamos del ejercicio 04.
+
+---
+
+## 5. ✅ Verificación
+
+```
+[x] Tenés un número antes y un número después que demuestra la mejora.
+    Evidencia: GET /api/alumnos sin paginación (10.135 alumnos) =
+    2.25163s. GET /api/alumnos?page=1&limit=20 = 0.038692s.
+    Mejora: ~58 veces más rápido.
+
+[x] La paginación funciona con page=1&limit=20 (caso normal).
+    Evidencia: body confirmado con curl, devuelve exactamente 20 alumnos,
+    con page=1, limit=20, total=10135, totalPages=507.
+
+[ ] La paginación no se rompe con valores raros (page=0, limit=-5,
+    limit=99999).
+    Evidencia: PENDIENTE — falta correr específicamente estos 3 casos y
+    confirmar que se sanitizan como se diseñó (page=0→1, limit
+    negativo→100, limit=99999→100). Ver collection de Postman adjunta.
+
+[x] Si optimizaste un N+1, mostrá que bajó la cantidad de queries.
+    Evidencia: la versión ingenua (loop con CursosService.getByIdAsync
+    por alumno) hubiera sido 1+20=21 queries por página (con limit=20);
+    la versión con JOIN implementada es 2 queries siempre (1 SELECT con
+    JOIN + 1 COUNT), sin importar el limit.
+
+[x] Las mejoras no cambiaron el resultado (mismos datos, solo más rápido
+    / mejor paginado).
+    Evidencia: los mismos alumnos que existían siguen apareciendo,
+    ahora con el campo adicional nombre_curso y paginados.
+
+[x] Descartaste al menos una sugerencia de la IA por ser irrelevante a
+    esta escala (y lo justificás).
+    Evidencia: se descartaron 2, no solo 1 — el doble query de
+    updateAsync (costo fijo, no escala) y SELECT * vs columnas explícitas
+    (sin columnas pesadas, diferencia despreciable) — ambas con
+    justificación propia en el Prompt #1.
+```
+
+---
+
+## 6. ✍️ Reflexión (300–600 palabras)
+
+La instrucción más importante de este ejercicio fue medir antes de tocar cualquier código, y en la práctica esto obligó a resolver primero varios problemas de nuestro propio entorno que no tenían nada que ver con performance en sí. Antes de poder confiar en cualquier número, tuvimos que: cargar `dotenv` en el script de seed (que corre fuera del flujo normal de `app.js`), y descubrir que `materias-repository.js` era, literalmente, una copia sin adaptar de `cursos-repository.js` desde el ejercicio 01 — la clase se llamaba `CursosRepository`, apuntaba a la tabla `cursos`, y nunca lo habíamos notado hasta ver los logs del constructor al reiniciar el server con el código de paginación ya escrito. Este bug no tiene relación directa con este ejercicio, pero si no lo hubiéramos visto, probablemente hubiéramos medido y optimizado sobre una base de datos con información mezclada entre dos tablas distintas.
+
+La decisión de arquitectura más relevante fue priorizar la falta de paginación por sobre las otras 3 candidatas, con un criterio concreto: es el único problema que no tiene techo natural, porque crece con cada fila insertada en la tabla, sin límite. El doble query de `updateAsync`, en cambio, tiene un costo fijo (un roundtrip extra de pocos milisegundos) que no empeora sin importar si la tabla tiene 10 o 10 millones de filas — por eso lo descartamos, aunque a primera vista "dos queries en vez de una" suene igual de mal que "traer 10.000 filas sin límite". Aprendimos a distinguir un problema que escala mal de uno que simplemente tiene un costo fijo aceptable.
+
+Los números concretos que obtuvimos confirman la magnitud real del problema: con 10.135 alumnos, `GET /api/alumnos` sin paginación tardaba 2.25 segundos; con `limit=20`, tarda 0.039 segundos — una mejora de aproximadamente 58 veces. Este número no es una estimación teórica, es una medición real hecha con `curl -w` antes y después del cambio, sobre la misma tabla con la misma cantidad de datos.
+
+Para la segunda optimización, en vez de esperar a que el N+1 del nombre del curso se convirtiera en un problema real, lo resolvimos preventivamente con un `JOIN` desde el principio, cuando implementamos el campo `nombre_curso`. Esto evitó tener que refactorizar después una versión ingenua (que hubiera sido, con `limit=20`, 21 queries por página en vez de 2). Elegimos `LEFT JOIN` en vez de `INNER JOIN` deliberadamente, para que un alumno con un `id_curso` inválido o nulo siga apareciendo en el listado (con `nombre_curso: null`) en vez de desaparecer silenciosamente — un `INNER JOIN` hubiera cambiado el comportamiento del endpoint de una forma que nadie pidió.
+
+Lo que más aprendimos es que "optimizar" sin medir es, literalmente, adivinar: sin el número de 2.25 segundos "antes", no tendríamos ninguna forma de defender en el oral que el cambio realmente sirvió, más allá de una intuición de que "debería ser más rápido". Medir antes y después convierte una opinión en un hecho verificable.
+
+---
+
+## 7. 🔗 Adjuntos
+
+- [ ] Link/PDF de la conversación completa con la IA
+- [ ] Commit(s) en GitHub: `____________`
+- [ ] Capturas / evidencias de verificación (mediciones antes/después, script de seed corriendo, DELETE de limpieza de datos de prueba)

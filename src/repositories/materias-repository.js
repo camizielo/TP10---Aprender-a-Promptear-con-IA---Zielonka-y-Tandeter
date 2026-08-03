@@ -1,22 +1,21 @@
-
 import BaseRepository from './base-repository.js';
 
-export default class CursosRepository extends BaseRepository {
+export default class MateriasRepository extends BaseRepository {
     constructor() {
-        super('cursos');
-        console.log('Estoy en: CursosRepository.constructor()');
+        super('materias');
+        console.log('Estoy en: MateriasRepository.constructor()');
     }
 
     createAsync = async (entity) => {
-        console.log(`CursosRepository.createAsync(${JSON.stringify(entity)})`);
-        const sql = `INSERT INTO cursos (nombre) VALUES ($1) RETURNING id`;
+        console.log(`MateriasRepository.createAsync(${JSON.stringify(entity)})`);
+        const sql = `INSERT INTO materias (nombre) VALUES ($1) RETURNING id`;
         const values = [entity?.nombre ?? ''];
         return await this.db.queryReturnId(sql, values);
     }
 
     updateAsync = async (entity) => {
-        console.log(`CursosRepository.updateAsync(${JSON.stringify(entity)})`);
-        const sql = `UPDATE cursos SET nombre = $2 WHERE id = $1`;
+        console.log(`MateriasRepository.updateAsync(${JSON.stringify(entity)})`);
+        const sql = `UPDATE materias SET nombre = $2 WHERE id = $1`;
         const values = [entity.id, entity?.nombre ?? ''];
         return await this.db.queryRowCount(sql, values);
     }

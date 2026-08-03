@@ -1,6 +1,8 @@
 import AlumnosRepository from '../repositories/alumnos-repository.js';
 import CursosService from './cursos-service.js';
 import { calcularEdad, agregarEdad } from '../helpers/fechas-helper.js';
+import AppError from '../helpers/app-error.js';
+import { StatusCodes } from 'http-status-codes';
 
 export default class AlumnosService {
     constructor() {
@@ -9,11 +11,14 @@ export default class AlumnosService {
         this.CursosService = new CursosService();
     }
 
-    getAllAsync = async () => {
-        console.log(`AlumnosService.getAllAsync()`);
-        const returnArray = await this.AlumnosRepository.getAllAsync();
-        if (returnArray == null) return null;
-        return returnArray.map(alumno => agregarEdad(alumno));
+    getAllAsync = async (page, limit) => {
+        console.log(`AlumnosService.getAllAsync(page=${page}, limit=${limit})`);
+        const resultado = await this.AlumnosRepository.getAllAsync(page, limit);
+        if (resultado == null) return null;
+        return {
+            ...resultado,
+            data: resultado.data.map(alumno => agregarEdad(alumno))
+        };
     }
 
     getByIdAsync = async (id) => {
@@ -48,7 +53,7 @@ export default class AlumnosService {
         if (!idCurso) return;
         const curso = await this.CursosService.getByIdAsync(idCurso);
         if (curso == null) {
-            throw new Error(`El curso con id ${idCurso} no existe.`);
+            throw new AppError(`El curso con id ${idCurso} no existe.`, StatusCodes.BAD_REQUEST);
         }
     }
 }
