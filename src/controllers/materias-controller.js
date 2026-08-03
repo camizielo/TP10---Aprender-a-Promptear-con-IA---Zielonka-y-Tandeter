@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import MateriasService from '../services/materias-service.js'
+import AppError from '../helpers/app-error.js';
+import LogHelper from '../helpers/log-helper.js';
 import verificarToken from './../middlewares/verificar-token-middleware.js';
 
 const router = Router();
@@ -18,8 +20,12 @@ router.get('', async (req, res) => {
             res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error interno.`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
@@ -33,8 +39,12 @@ router.get('/:id', async (req, res) => {
             res.status(StatusCodes.NOT_FOUND).send(`No se encontro la entidad (id:${id}).`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
@@ -48,8 +58,12 @@ router.post('', verificarToken, async (req, res) => {
             res.status(StatusCodes.BAD_REQUEST).json(null);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.BAD_REQUEST).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
@@ -68,8 +82,12 @@ router.put('/:id', verificarToken, async (req, res) => {
             res.status(StatusCodes.NOT_FOUND).send(`No se encontro la entidad (id:${id}).`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.BAD_REQUEST).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 
@@ -83,8 +101,12 @@ router.delete('/:id', verificarToken, async (req, res) => {
             res.status(StatusCodes.NOT_FOUND).send(`No se encontro la entidad (id:${id}).`);
         }
     } catch (error) {
-        console.log(error);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error: ${error.message}`);
+        if (error instanceof AppError) {
+            res.status(error.statusCode).send(error.message);
+        } else {
+            LogHelper.logError(error);
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Error interno del servidor');
+        }
     }
 });
 

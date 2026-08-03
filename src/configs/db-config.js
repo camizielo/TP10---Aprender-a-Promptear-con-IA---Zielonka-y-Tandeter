@@ -12,6 +12,18 @@
 const target = (process.env.DB_TARGET ?? 'local').trim().toLowerCase();
 const prefix = target === 'supabase' ? 'DB_SUPABASE_' : 'DB_LOCAL_';
 
+// Validación del certificado TLS de Supabase:
+// Supabase emite sus certificados a través de una cadena de confianza
+// pública (no autofirmados), así que en la gran mayoría de los casos
+// `rejectUnauthorized: true` valida correctamente sin configuración extra.
+// Se deja como default seguro. Si en tu instancia puntual de Supabase la
+// conexión falla por un error de certificado (ej: "self signed certificate
+// in certificate chain" o similar), es una LIMITACIÓN CONOCIDA a verificar
+// caso por caso — podés desactivar la validación temporalmente seteando
+// DB_SUPABASE_SSL_REJECT_UNAUTHORIZED=false en tu .env, dejando explícito
+// en el .env.example que esto reduce la seguridad de la conexión.
+const sslRejectUnauthorized = (process.env.DB_SUPABASE_SSL_REJECT_UNAUTHORIZED ?? 'true').trim().toLowerCase() !== 'false';
+
 const DBConfig = {
     host     : process.env[prefix + 'HOST']     ?? 'localhost',
     database : process.env[prefix + 'DATABASE'] ?? '',
@@ -19,12 +31,15 @@ const DBConfig = {
     password : process.env[prefix + 'PASSWORD'] ?? '',
     port     : process.env[prefix + 'PORT']     ?? 5432,
     // Supabase (y casi todas las bases en la nube) exigen SSL; la local no.
-    ssl      : target === 'supabase' ? { rejectUnauthorized: false } : false
+    ssl      : target === 'supabase' ? { rejectUnauthorized: sslRejectUnauthorized } : false
     //max                     : 20,       //maximum number of clients the pool should contain by default this is set to 10.
     //idleTimeoutMillis       : 30000,
     //connectionTimeoutMillis : 2000
 }
 
 console.log(`db-config: conectando a la base "${target}"`);
+if (target === 'supabase' && !sslRejectUnauthorized) {
+    console.log('⚠️  db-config: SSL con rejectUnauthorized=false — validación de certificado deshabilitada.');
+}
 
 export default DBConfig;
